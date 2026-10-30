@@ -1,0 +1,57 @@
+********************************************************
+*** Targeter Text File
+*** 
+*** Using Differential Correction
+***
+*** 1 variables
+*** 1 goals
+***
+*** Variables:
+***    Burn1Dur
+***    
+*** Goals:
+***    SC.Earth.SMA
+***    
+*** SolverMode:  Solve
+***    
+********************************************************
+
+Iteration 1
+Running Nominal Pass
+Variables:
+   Burn1Dur = 693.1
+   
+Goals and achieved values:
+   SC.Earth.SMA  Desired: 6878.14 Achieved: 6880.892543498808
+   Tolerance: 0.5
+   
+********************************************************
+
+
+Jacobian (Sensitivity matrix):
+   0.1507424311967043
+
+
+Inverse Jacobian:
+   6.633832239942428
+
+
+New scaled variable estimates:
+   Burn1Dur = 674.8400881957674
+   
+Iteration 2
+Running Nominal Pass
+Variables:
+   Burn1Dur = 674.8400881957674
+   
+Goals and achieved values:
+   SC.Earth.SMA  Desired: 6878.14 Achieved: 6878.142113282049
+   Tolerance: 0.5
+   
+********************************************************
+
+
+********************************************************
+*** Targeting Completed in 2 iterations
+********************************************************
+

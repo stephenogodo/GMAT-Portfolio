@@ -1,0 +1,200 @@
+%----------------------------------------
+% Scenario 08: Finite Burn + Fuel Budget
+% Hohmann Transfer: 400 km -> 600 km circular (LEO to LEO)
+%
+% Spacecraft: 600 kg wet (500 kg dry, 100 kg fuel)
+% Thruster:   50 N biprop (MMH/NTO), Isp = 290 s
+%             Moog/Aerojet 50 N class -- realistic for LEO transfer vehicle
+%
+% Rationale for 50 N:
+%   22 N on 600 kg gives 27% burn arc -- wraps past apogee, breaking
+%   Hohmann geometry. 50 N keeps the burn arc at ~12% of T_orbit,
+%   making finite vs. impulsive effects clearly visible but physically
+%   valid. The spacecraft is a LEO transfer/deployment bus.
+%
+% Strategy:
+%   DC1: Burn1Dur -> SMA = 6878.14 km  (transfer ellipse apogee at 600 km)
+%   DC2: Burn2Dur -> SMA = 6978.14 km  (circularise at 600 km)
+%   DC3: Burn3Dur -> ECC = 0.003       (partial trim, compromise)
+%
+% Pre-computation: 08_hohmann_finite_burn_precompute.py
+%   DV1 = 55.545 m/s,  DV2 = 55.142 m/s,  total = 110.687 m/s
+%   Burn 1 est.: 660 s (11.9% orbit arc)
+%   Burn 2 est.: 643 s (11.6% orbit arc)
+%   Fuel consumed: ~24.6 kg of 100 kg tank (24.6%)
+%----------------------------------------
+
+Create Spacecraft SC;
+GMAT SC.DateFormat       = UTCGregorian;
+GMAT SC.Epoch            = '01 Jan 2024 00:00:00.000';
+GMAT SC.CoordinateSystem = EarthMJ2000Eq;
+GMAT SC.DisplayStateType = Keplerian;
+GMAT SC.SMA              = 6778.137;   % km -- 400 km circular parking orbit
+GMAT SC.ECC              = 0.0;
+GMAT SC.INC              = 28.5;
+GMAT SC.RAAN             = 0.0;
+GMAT SC.AOP              = 0.0;
+GMAT SC.TA               = 0.0;
+GMAT SC.DryMass          = 500.0;      % kg
+GMAT SC.Cd               = 2.2;
+GMAT SC.Cr               = 1.8;
+GMAT SC.DragArea         = 15.0;
+GMAT SC.SRPArea          = 15.0;
+
+Create ChemicalTank FuelTank;
+GMAT FuelTank.AllowNegativeFuelMass = false;
+GMAT FuelTank.FuelMass              = 100.0;    % kg
+GMAT FuelTank.Pressure              = 2000.0;   % kPa -- biprop regulated
+GMAT FuelTank.Temperature           = 20.0;
+GMAT FuelTank.RefTemperature        = 20.0;
+GMAT FuelTank.Volume                = 0.12;     % m^3 -- sized for 100 kg MMH/NTO
+GMAT FuelTank.FuelDensity           = 866.0;    % kg/m^3 -- MMH density
+GMAT FuelTank.PressureModel         = PressureRegulated;
+
+Create ChemicalThruster Thruster1;
+GMAT Thruster1.CoordinateSystem  = Local;
+GMAT Thruster1.Origin            = Earth;
+GMAT Thruster1.Axes              = VNB;
+GMAT Thruster1.ThrustDirection1  = 1.0;    % +V = along-track (prograde)
+GMAT Thruster1.ThrustDirection2  = 0.0;
+GMAT Thruster1.ThrustDirection3  = 0.0;
+GMAT Thruster1.DutyCycle         = 1.0;
+GMAT Thruster1.ThrustScaleFactor = 1.0;
+GMAT Thruster1.DecrementMass         = true;
+GMAT Thruster1.Tank              = {FuelTank};
+GMAT Thruster1.C1                = 50.0;   % N   -- 50 N biprop
+GMAT Thruster1.K1                = 290.0;  % s   -- Isp
+
+GMAT SC.Tanks      = {FuelTank};
+GMAT SC.Thrusters  = {Thruster1};
+
+Create ForceModel DefaultProp_FM;
+GMAT DefaultProp_FM.CentralBody               = Earth;
+GMAT DefaultProp_FM.PrimaryBodies             = {Earth};
+GMAT DefaultProp_FM.GravityField.Earth.Degree = 4;
+GMAT DefaultProp_FM.GravityField.Earth.Order  = 4;
+GMAT DefaultProp_FM.GravityField.Earth.Model  = JGM2;
+GMAT DefaultProp_FM.Drag.AtmosphereModel      = MSISE90;   % drag on at LEO altitude
+GMAT DefaultProp_FM.SRP                       = Off;
+
+Create Propagator DefaultProp;
+GMAT DefaultProp.FM              = DefaultProp_FM;
+GMAT DefaultProp.Type            = RungeKutta89;
+GMAT DefaultProp.InitialStepSize = 60;
+GMAT DefaultProp.MinStep         = 0.001;
+GMAT DefaultProp.MaxStep         = 2700;
+
+Create FiniteBurn FinBurn1;
+GMAT FinBurn1.Thrusters = {Thruster1};
+
+Create DifferentialCorrector DC1;
+GMAT DC1.ShowProgress      = true;
+GMAT DC1.ReportStyle       = Normal;
+GMAT DC1.MaximumIterations = 75;
+GMAT DC1.DerivativeMethod  = ForwardDifference;
+GMAT DC1.TargeterTextFile  = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_07_finite_burn_hohmann\DC1.data';
+
+Create DifferentialCorrector DC2;
+GMAT DC2.ShowProgress      = true;
+GMAT DC2.ReportStyle       = Normal;
+GMAT DC2.MaximumIterations = 75;
+GMAT DC2.DerivativeMethod  = ForwardDifference;
+GMAT DC2.TargeterTextFile  = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_07_finite_burn_hohmann\DC2.data';
+
+Create DifferentialCorrector DC3;
+GMAT DC3.ShowProgress      = true;
+GMAT DC3.ReportStyle       = Normal;
+GMAT DC3.MaximumIterations = 75;
+GMAT DC3.DerivativeMethod  = ForwardDifference;
+GMAT DC3.TargeterTextFile  = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_07_finite_burn_hohmann\DC3.data';
+
+%  Initial guesses from pre-computation (Tsiolkovsky + 5% gravity/steering loss)
+%  Burn1: 660 s x 1.05 = 693 s;  Burn2: 643 s x 1.05 = 675 s
+%
+%  DC parameters derived from first principles (see 08_hohmann_finite_burn_precompute.py):
+%    Perturbation = 0.1 s  (Gauss VOP noise floor; practical 0.1 s floor applied)
+%    Lower  = Tsiolkovsky duration at 50% of impulsive DV
+%    Upper  = Tsiolkovsky duration at 200% of impulsive DV
+%    MaxStep = (Upper - Lower) / 10  (prevents single-iteration overshoot)
+Create Variable Burn1Dur Burn2Dur Burn3Dur;
+GMAT Burn1Dur = 693.1;
+GMAT Burn2Dur = 674.8;
+GMAT Burn3Dur = 96.4;
+
+Create ReportFile BurnReport;
+GMAT BurnReport.Filename     = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_07_finite_burn_hohmann\08_finite_burn_report.txt';
+GMAT BurnReport.Add          = {SC.UTCGregorian, SC.Earth.SMA, SC.Earth.ECC, SC.Earth.Altitude, SC.TotalMass, SC.FuelTank.FuelMass};
+GMAT BurnReport.WriteHeaders = true;
+
+Create XYPlot AltitudePlot;
+GMAT AltitudePlot.XVariable  = SC.ElapsedSecs;
+GMAT AltitudePlot.YVariables = {SC.Earth.Altitude};
+GMAT AltitudePlot.ShowGrid   = true;
+GMAT AltitudePlot.ShowPlot   = true;
+
+Create XYPlot FuelPlot;
+GMAT FuelPlot.XVariable  = SC.ElapsedSecs;
+GMAT FuelPlot.YVariables = {SC.FuelTank.FuelMass};
+GMAT FuelPlot.ShowGrid   = true;
+GMAT FuelPlot.ShowPlot   = true;
+
+Create OrbitView OrbitView1;
+GMAT OrbitView1.Add              = {SC, Earth};
+GMAT OrbitView1.CoordinateSystem = EarthMJ2000Eq;
+GMAT OrbitView1.DrawObject       = [true true];
+GMAT OrbitView1.ShowPlot         = true;
+
+BeginMissionSequence;
+
+Report BurnReport SC.UTCGregorian SC.Earth.SMA SC.Earth.ECC SC.Earth.Altitude SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- TARGET 1: Burn1Dur raises apogee to 600 km (transfer ellipse SMA = 6878.14 km) ---
+%    Burn at perigee; 50 N x ~693 s -> DV ~ 55.5 m/s
+Target DC1 {SolveMode = Solve, ExitMode = SaveAndContinue};
+   Vary DC1(Burn1Dur = 693.1, {Perturbation = 0.1, Lower = 331, Upper = 1308, MaxStep = 97.7});
+   BeginFiniteBurn FinBurn1(SC);
+   Propagate DefaultProp(SC) {SC.ElapsedSecs = Burn1Dur};
+   EndFiniteBurn FinBurn1(SC);
+   Achieve DC1(SC.Earth.SMA = 6878.14, {Tolerance = 0.5});
+EndTarget;
+
+%--- Coast to apogee of transfer ellipse (~47.3 min) ---
+Propagate DefaultProp(SC) {SC.ElapsedSecs = 2700.0};
+Propagate DefaultProp(SC) {SC.Apoapsis};
+
+Report BurnReport SC.UTCGregorian SC.Earth.SMA SC.Earth.ECC SC.Earth.Altitude SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- TARGET 2: Burn2Dur circularises at apogee -> SMA = 6978.14 km (600 km) ---
+%    Burn at apogee; 50 N x ~675 s -> DV ~ 55.1 m/s
+Target DC2 {SolveMode = Solve, ExitMode = SaveAndContinue};
+   Vary DC2(Burn2Dur = 674.8, {Perturbation = 0.1, Lower = 322, Upper = 1273, MaxStep = 95.1});
+   BeginFiniteBurn FinBurn1(SC);
+   Propagate DefaultProp(SC) {SC.ElapsedSecs = Burn2Dur};
+   EndFiniteBurn FinBurn1(SC);
+   Achieve DC2(SC.Earth.SMA = 6978.14, {Tolerance = 0.5});
+EndTarget;
+
+Report BurnReport SC.UTCGregorian SC.Earth.SMA SC.Earth.ECC SC.Earth.Altitude SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- Coast to next apogee for partial ECC trim ---
+Propagate DefaultProp(SC) {SC.Apoapsis};
+
+Report BurnReport SC.UTCGregorian SC.Earth.SMA SC.Earth.ECC SC.Earth.Altitude SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- TARGET 3: Partial trim burn at apogee -> ECC = 0.003 ---
+%    Raises periapsis; compromise between SMA accuracy and circularity.
+%    Full circularisation (ECC = 0) would cost ~1.7 kg more propellant.
+Target DC3 {SolveMode = Solve, ExitMode = SaveAndContinue};
+   Vary DC3(Burn3Dur = 96.4, {Perturbation = 1.0, Lower = 1, Upper = 482, MaxStep = 48.1});
+   BeginFiniteBurn FinBurn1(SC);
+   Propagate DefaultProp(SC) {SC.ElapsedSecs = Burn3Dur};
+   EndFiniteBurn FinBurn1(SC);
+   Achieve DC3(SC.Earth.ECC = 0.003, {Tolerance = 0.001});
+EndTarget;
+
+Report BurnReport SC.UTCGregorian SC.Earth.SMA SC.Earth.ECC SC.Earth.Altitude SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- One full orbit coast at 600 km to confirm stable final orbit ---
+Propagate DefaultProp(SC) {SC.ElapsedSecs = 5801.0};
+
+Report BurnReport SC.UTCGregorian SC.Earth.SMA SC.Earth.ECC SC.Earth.Altitude SC.TotalMass SC.FuelTank.FuelMass;

@@ -1,0 +1,57 @@
+********************************************************
+*** Targeter Text File
+*** 
+*** Using Differential Correction
+***
+*** 1 variables
+*** 1 goals
+***
+*** Variables:
+***    Burn3Dur
+***    
+*** Goals:
+***    SC.Earth.ECC
+***    
+*** SolverMode:  Solve
+***    
+********************************************************
+
+Iteration 1
+Running Nominal Pass
+Variables:
+   Burn3Dur = 96.40000000000001
+   
+Goals and achieved values:
+   SC.Earth.ECC  Desired: 0.003 Achieved: 0.001999033729065489
+   Tolerance: 0.001
+   
+********************************************************
+
+
+Jacobian (Sensitivity matrix):
+   -2.303843581915547e-05
+
+
+Inverse Jacobian:
+   -43405.72458346078
+
+
+New scaled variable estimates:
+   Burn3Dur = 52.95233372648283
+   
+Iteration 2
+Running Nominal Pass
+Variables:
+   Burn3Dur = 52.95233372648283
+   
+Goals and achieved values:
+   SC.Earth.ECC  Desired: 0.003 Achieved: 0.003011044990167848
+   Tolerance: 0.001
+   
+********************************************************
+
+
+********************************************************
+*** Targeting Completed in 2 iterations
+********************************************************
+
