@@ -1,0 +1,152 @@
+%----------------------------------------
+%  09_geo_ewsk_v17.script
+%
+%  NigComSat-1R @ 42.5 deg E -- GEO East-West Station-Keeping (EWSK)
+%  GMAT Scenario 09, Version 17
+%
+%  SINGLE-BURN DEMONSTRATION (NigComSat operational practice):
+%    Coast from 42.50 degE; fire Burn 1 at day 1.5 when instantaneous
+%    lon reaches the operational trigger (42.53 degE) on the committed
+%    eastward drift. Burn fires BEFORE the 42.55 degE hard limit is
+%    ever reached. Observe westward arc for ~11 days.
+%
+%  Burn 1: day 1.5, 11s prograde (raises SMA above sync)
+%    Post-burn SMA ~ 42167.1 km (approx 3.0 km above sync)
+%    Westward arc: mean lon drifts from ~42.53 back toward ~42.50 degE
+%    Arc duration: ~15 days
+%  Total scenario: ~16.5 days
+%
+%  Deadband: 42.45 to 42.55 degE (+/- 0.05 deg)
+%  Slot: 42.5 degE (NigComSat-1R ITU filing -- NEVER CHANGE)
+%  Operational trigger: 42.53 degE (fire before 42.55 is reached)
+%
+%  ASCII-ONLY: No Unicode, no degree signs, no +/- symbols anywhere.
+%  Author: Stephen O. Ogodo
+%  Tool:   GMAT R2022a
+%----------------------------------------
+
+%--- Force Model (SRP on, same as v12) ---
+Create ForceModel GEO_FM;
+GMAT GEO_FM.CentralBody = Earth;
+GMAT GEO_FM.PrimaryBodies = {Earth};
+GMAT GEO_FM.GravityField.Earth.Degree = 4;
+GMAT GEO_FM.GravityField.Earth.Order  = 4;
+GMAT GEO_FM.GravityField.Earth.PotentialFile = 'JGM2.cof';
+GMAT GEO_FM.SRP = On;
+GMAT GEO_FM.Drag = None;
+GMAT GEO_FM.RelativisticCorrection = Off;
+
+%--- Propagator ---
+Create Propagator GEOProp;
+GMAT GEOProp.FM = GEO_FM;
+GMAT GEOProp.Type = RungeKutta89;
+GMAT GEOProp.InitialStepSize = 60;
+GMAT GEOProp.Accuracy = 1e-13;
+GMAT GEOProp.MinStep = 0.001;
+GMAT GEOProp.MaxStep = 86400;
+GMAT GEOProp.MaxStepAttempts = 50;
+
+%--- Spacecraft (NEVER CHANGE THESE ORBITAL ELEMENTS) ---
+Create Spacecraft SC;
+GMAT SC.DateFormat  = UTCGregorian;
+GMAT SC.Epoch       = '01 Jan 2024 00:00:00.000';
+GMAT SC.CoordinateSystem = EarthMJ2000Eq;
+GMAT SC.DisplayStateType = Keplerian;
+GMAT SC.SMA  = 42164.1696;
+GMAT SC.ECC  = 0.0001;
+GMAT SC.INC  = 0.05;
+GMAT SC.RAAN = 0.0;
+GMAT SC.AOP  = 0.0;
+GMAT SC.TA   = 142.3452;
+GMAT SC.DryMass = 1000.0;
+GMAT SC.Cd = 2.2;
+GMAT SC.Cr = 1.8;
+GMAT SC.DragArea = 20.0;
+GMAT SC.SRPArea  = 50.0;
+
+%--- Fuel Tank ---
+Create ChemicalTank FuelTank;
+GMAT FuelTank.AllowNegativeFuelMass = false;
+GMAT FuelTank.FuelMass = 800.0;
+GMAT FuelTank.Volume = 0.85;
+GMAT FuelTank.FuelDensity = 1000;
+GMAT FuelTank.PressureModel = PressureRegulated;
+GMAT SC.Tanks = {FuelTank};
+
+%--- Thruster (prograde, VNB frame, 20N, Isp 220s) ---
+%  Origin = Earth (not SC) -- same as v12 which worked
+Create ChemicalThruster Thruster1;
+GMAT Thruster1.CoordinateSystem = Local;
+GMAT Thruster1.Origin = Earth;
+GMAT Thruster1.Axes = VNB;
+GMAT Thruster1.ThrustDirection1 = 1.0;
+GMAT Thruster1.ThrustDirection2 = 0.0;
+GMAT Thruster1.ThrustDirection3 = 0.0;
+GMAT Thruster1.DecrementMass = true;
+GMAT Thruster1.Tank = {FuelTank};
+GMAT Thruster1.C1 = 20.0;
+GMAT Thruster1.K1 = 220.0;
+GMAT SC.Thrusters = {Thruster1};
+
+%--- Finite Burn ---
+Create FiniteBurn FinBurn1;
+GMAT FinBurn1.Thrusters = {Thruster1};
+
+%--- Report File (absolute path) ---
+Create ReportFile EWSKReport;
+GMAT EWSKReport.SolverIterations = Current;
+GMAT EWSKReport.UpperLeft = [0.0 0.0];
+GMAT EWSKReport.Size = [0.0 0.0];
+GMAT EWSKReport.RelativeZOrder = 0;
+GMAT EWSKReport.Maximized = false;
+GMAT EWSKReport.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_08a_geo_ewsk\09a_geo_ewsk_report.txt';
+GMAT EWSKReport.Precision = 6;
+GMAT EWSKReport.Add = {SC.UTCGregorian, SC.Earth.Longitude, SC.ECC, SC.SMA, SC.TotalMass, SC.FuelTank.FuelMass};
+GMAT EWSKReport.WriteHeaders = true;
+GMAT EWSKReport.LeftJustify = On;
+GMAT EWSKReport.ZeroFill = Off;
+GMAT EWSKReport.ColumnWidth = 24;
+GMAT EWSKReport.WriteReport = true;
+
+%--- XY Plot (live longitude vs elapsed days) ---
+Create XYPlot EWSKPlot;
+GMAT EWSKPlot.SolverIterations = Current;
+GMAT EWSKPlot.UpperLeft        = [0.01 0.01];
+GMAT EWSKPlot.Size             = [0.70 0.45];
+GMAT EWSKPlot.RelativeZOrder   = 500;
+GMAT EWSKPlot.Maximized        = false;
+GMAT EWSKPlot.XVariable        = SC.ElapsedDays;
+GMAT EWSKPlot.YVariables       = {SC.Earth.Longitude};
+GMAT EWSKPlot.ShowPlot         = true;
+
+BeginMissionSequence;
+
+%--- Epoch state report ---
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- PHASE 0: Coast 1.5 days ---
+%  Tesseral force drifts satellite eastward from 42.50 degE.
+%  At day ~1.5 instantaneous lon reaches the 42.53 degE operational
+%  trigger on the committed eastward drift (second diurnal ascending
+%  limb). 42.55 degE hard limit has NOT yet been violated.
+%  This mirrors real NigComSat operational practice: fire before
+%  the hard deadband limit is reached, not after.
+Propagate GEOProp(SC) {SC.ElapsedDays = 1.5};
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- BURN 1: 11s prograde at day 1.5 ---
+%  Raises SMA above synchronous orbit (~42164.17 km)
+%  SMA raised to ~42167.1 km => period > sidereal day => westward drift
+%  42.55 degE hard east limit is NEVER violated -- burn is pre-emptive
+BeginFiniteBurn FinBurn1(SC);
+Propagate GEOProp(SC) {SC.ElapsedSecs = 11};
+EndFiniteBurn FinBurn1(SC);
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- PHASE 1: Coast 15.0 days -- observe full westward arc and return toward east limit ---
+%  Mean lon drifts westward from ~42.53 degE back toward ~42.50 degE
+%  Instantaneous lon oscillates with ~0.035 deg diurnal amplitude
+%  throughout -- all within the 42.45 to 42.55 degE deadband
+%  EWSK demonstrated: one pre-emptive burn, full arc, satellite drifts back toward east limit (propellant-efficient -- no premature SK)
+Propagate GEOProp(SC) {SC.ElapsedDays = 15.0};
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
