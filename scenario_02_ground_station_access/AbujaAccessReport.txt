@@ -1,0 +1,12 @@
+Target: LEOSat
+
+Observer: Abuja
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 03:43:00.095    01 Jan 2024 03:50:28.597      448.50143348    
+01 Jan 2024 05:20:39.019    01 Jan 2024 05:24:47.990      248.97096273    
+01 Jan 2024 16:54:43.360    01 Jan 2024 17:02:55.083      491.72248092    
+
+
+Number of events : 3
+
+

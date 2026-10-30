@@ -1,0 +1,431 @@
+%========================================================================
+% GMAT Astrodynamics Portfolio -- Scenario 03
+% LEO Orbit Propagation, Ground Track & Ground Station Access Analysis
+%
+% Author  : Stephen O. Ogodo
+% Date    : 2026-10-16
+% Tool    : GMAT R2022a
+%========================================================================
+%
+% MISSION OVERVIEW
+% ----------------
+% This scenario propagates a single Low Earth Orbit (LEO) satellite for
+% one full day and analyses its geometry against the Abuja ground station
+% (Nigeria).  It extends Scenario 02 by adding:
+%   - A GroundStation object (Abuja) for contact analysis
+%   - A ContactLocator (AbujaAccess) that computes pass events
+%
+% The script demonstrates three fundamental LEO operations concepts:
+%   1. Single-satellite propagation and ground track evolution
+%   2. Ground track latitude banding set by orbital inclination
+%   3. Ground station pass timing, duration, and coverage gaps
+%
+% ORBITAL DESIGN RATIONALE
+% ------------------------
+% Orbit class : Low Earth Orbit (LEO), ISS-altitude class
+% SMA         : 6778.14 km  => altitude ~400 km above Earth surface
+% INC         : 51.6 deg    => same inclination as the International
+%                              Space Station; chosen to match realistic
+%                              crewed/broadband LEO operations
+% ECC         : ~0 (1e-4)   => near-circular; altitude stays nominally
+%                              constant throughout each orbit
+% RAAN        : 0 deg       => reference ascending node
+% AOP         : 0 deg       => argument of perigee (circular -- no
+%                              preferred apogee direction)
+% TA          : 0 deg       => satellite starts at the ascending node
+%
+% KEY DERIVED QUANTITIES (for reference -- not set here, but used to
+% understand the simulation results):
+%   Orbital period  T = 2*pi*sqrt(SMA^3 / mu)
+%                     = 2*pi*sqrt(6778^3 / 398600.4) = 5553 s = 92.55 min
+%   Orbital velocity  v = sqrt(mu / SMA) = sqrt(398600.4 / 6778)
+%                       = 7.669 km/s
+%   Orbits per day  = 24*60 / 92.55 = ~15.56 orbits
+%   Westward ground track shift per orbit:
+%                     Earth rotates 360 deg per 24 h => 0.25 deg/min
+%                     Shift = 0.25 deg/min x 92.55 min = 23.1 deg/orbit
+%   Latitude coverage band: +/-51.6 deg  (hard ceiling = inclination)
+%
+% GROUND STATION CONTEXT
+% ----------------------
+% Abuja is the capital of Nigeria and home to the NigComSat ground
+% segment.  Its geodetic position (9.06 N, 7.50 E) sits well within
+% the satellite's +/-51.6 deg latitude coverage band, so overhead
+% passes DO occur -- but the 23 deg/orbit westward ground track drift
+% means only ~3 of the 15.5 daily orbits pass close enough to Abuja's
+% horizon to produce a contact event above the 5 deg elevation mask.
+%
+% FORCE MODEL CHOICE
+% ------------------
+% This scenario uses JGM2 gravity (4x4 tesseral) with no drag and no
+% SRP.  The tesseral terms are included to give a physically realistic
+% ground track evolution (pure point-mass gravity would give an exact
+% repeat ground track each orbit; J2 introduces the familiar westward
+% nodal regression).  Drag and SRP are switched off to keep the orbit
+% free of secular altitude decay -- the goal here is geometry analysis,
+% not lifetime prediction.
+%========================================================================
+
+
+%----------------------------------------
+%---------- Spacecraft
+%----------------------------------------
+
+Create Spacecraft LEOSat;
+
+% Epoch and reference frame
+LEOSat.DateFormat        = UTCGregorian;
+LEOSat.Epoch             = '01 Jan 2024 00:00:00.000';  % simulation start
+LEOSat.CoordinateSystem  = EarthMJ2000Eq;                % standard inertial frame
+LEOSat.DisplayStateType  = Keplerian;                    % display as classical orbital elements
+
+% Keplerian orbital elements (ISS-altitude LEO, circular, 51.6 deg inc)
+LEOSat.SMA   = 6778.139999999999;  % semi-major axis (km) -- ~400 km altitude
+LEOSat.ECC   = 9.99999999999171e-05;  % eccentricity ~0 (near-circular)
+LEOSat.INC   = 51.60000000000001;  % inclination (deg) -- ISS / broadband LEO value
+LEOSat.RAAN  = 0;                  % right ascension of ascending node (deg)
+LEOSat.AOP   = 0;                  % argument of perigee (deg) -- undefined for circular
+LEOSat.TA    = 0;                  % true anomaly at epoch -- satellite starts at
+                                   % the equatorial ascending node crossing
+
+% Physical properties
+LEOSat.DryMass   = 850;   % dry mass (kg) -- representative small LEO satellite
+LEOSat.Cd        = 2.2;   % drag coefficient (dimensionless) -- standard GMAT default
+LEOSat.Cr        = 1.8;   % solar radiation pressure reflectivity coefficient
+LEOSat.DragArea  = 15;    % effective drag cross-sectional area (m^2)
+LEOSat.SRPArea   = 1;     % effective SRP area (m^2) -- small; SRP is off in this run
+
+% SPAD / atmosphere scale factors (default = 1.0; not used in this scenario)
+LEOSat.SPADDragScaleFactor          = 1;
+LEOSat.SPADSRPScaleFactor           = 1;
+LEOSat.AtmosDensityScaleFactor      = 1;
+LEOSat.ExtendedMassPropertiesModel  = 'None';
+
+% NAIF IDs (required by GMAT; not used in post-processing for this scenario)
+LEOSat.NAIFId               = -10009001;
+LEOSat.NAIFIdReferenceFrame = -9009001;
+
+% Visualisation colours in OrbitView and GroundTrack
+LEOSat.OrbitColor  = Red;
+LEOSat.TargetColor = Teal;
+
+% Covariance (set to very large values = no uncertainty modelled)
+LEOSat.OrbitErrorCovariance = [ 1e+70 0 0 0 0 0 ; 0 1e+70 0 0 0 0 ; 0 0 1e+70 0 0 0 ; 0 0 0 1e+70 0 0 ; 0 0 0 0 1e+70 0 ; 0 0 0 0 0 1e+70 ];
+LEOSat.CdSigma  = 1e+70;
+LEOSat.CrSigma  = 1e+70;
+
+LEOSat.Id = 'SatId';
+
+% Attitude model (body-fixed to coordinate system; sufficient for pass geometry)
+LEOSat.Attitude                     = CoordinateSystemFixed;
+LEOSat.AttitudeDisplayStateType     = 'Quaternion';
+LEOSat.AttitudeRateDisplayStateType = 'AngularVelocity';
+LEOSat.AttitudeCoordinateSystem     = EarthMJ2000Eq;
+LEOSat.EulerAngleSequence           = '321';
+
+% 3-D model file for OrbitView (cosmetic only)
+LEOSat.SPADSRPInterpolationMethod      = Bilinear;
+LEOSat.SPADSRPScaleFactorSigma         = 1e+70;
+LEOSat.SPADDragInterpolationMethod     = Bilinear;
+LEOSat.SPADDragScaleFactorSigma        = 1e+70;
+LEOSat.AtmosDensityScaleFactorSigma    = 1e+70;
+LEOSat.ModelFile      = 'aura.3ds';
+LEOSat.ModelOffsetX   = 0;
+LEOSat.ModelOffsetY   = 0;
+LEOSat.ModelOffsetZ   = 0;
+LEOSat.ModelRotationX = 0;
+LEOSat.ModelRotationY = 0;
+LEOSat.ModelRotationZ = 0;
+LEOSat.ModelScale     = 1;
+
+
+%----------------------------------------
+%---------- GroundStations
+%----------------------------------------
+
+Create GroundStation Abuja;
+% Abuja, Federal Capital Territory, Nigeria -- NigComSat ground segment site.
+% Geodetic position: 9.06 deg N latitude, 7.50 deg E longitude, 342 m altitude.
+% Minimum elevation angle 5 deg -- contacts below this are blocked by terrain
+% and local obstructions; this is a standard operational mask for LEO tracking.
+
+Abuja.OrbitColor        = Thistle;
+Abuja.TargetColor       = DarkGray;
+Abuja.CentralBody       = Earth;
+Abuja.StateType         = Spherical;    % lat/lon/alt input format
+Abuja.HorizonReference  = Ellipsoid;   % elevation measured from WGS-84 ellipsoid
+
+% Geodetic coordinates
+Abuja.Location1 = 9.0579;              % geodetic latitude  (deg North)
+Abuja.Location2 = 7.495100000000001;   % East longitude     (deg East)
+Abuja.Location3 = 0.342;              % altitude above ellipsoid (km)
+
+Abuja.Id = 'Abuja';
+
+% Atmospheric correction models (off -- not needed for pass geometry)
+Abuja.IonosphereModel   = 'None';
+Abuja.TroposphereModel  = 'None';
+
+% Meteorological constants (used by ionosphere/troposphere models if enabled)
+Abuja.DataSource  = 'Constant';
+Abuja.Temperature = 295.1;   % K
+Abuja.Pressure    = 1013.5;  % hPa
+Abuja.Humidity    = 55;      % %
+
+% 5 deg elevation mask -- standard minimum for LEO ground station contacts
+Abuja.MinimumElevationAngle = 5;
+
+
+%----------------------------------------
+%---------- ForceModels
+%----------------------------------------
+
+Create ODEModel InternalODEModel;
+% Force model for LEO propagation.
+% Earth gravity JGM2 4x4 tesseral harmonics:
+%   - Degree/order 4x4 captures the dominant C20 (J2) zonal term that
+%     drives nodal regression and apsidal precession, plus C22/S22 tesseral
+%     terms that produce the slight longitude-dependent acceleration.
+%   - For a geometry / ground-track scenario this is more than adequate.
+%     Higher-fidelity missions (e.g., precise orbit determination) would
+%     use EGM96 or GRACE models at much higher degree/order.
+%
+% Drag:  OFF  -- no atmospheric drag modelled.  This means the orbit
+%               altitude stays nearly constant over 24 h.  Adding drag
+%               would cause ~100-200 m altitude loss per day at 400 km,
+%               which is negligible for a 1-day pass geometry analysis.
+%
+% SRP:   OFF  -- solar radiation pressure not modelled.  Effect is small
+%               compared to drag for a LEO satellite and is irrelevant for
+%               a 1-day contact analysis.
+%
+% Relativistic correction: OFF -- sub-mm/s effect; irrelevant for LEO ops.
+
+InternalODEModel.CentralBody               = Earth;
+InternalODEModel.PrimaryBodies             = {Earth};
+InternalODEModel.Drag                      = None;
+InternalODEModel.SRP                       = Off;
+InternalODEModel.RelativisticCorrection    = Off;
+InternalODEModel.ErrorControl              = RSSStep;   % root-sum-square step error control
+
+% JGM2 4x4 gravity field
+InternalODEModel.GravityField.Earth.Degree         = 4;
+InternalODEModel.GravityField.Earth.Order          = 4;
+InternalODEModel.GravityField.Earth.StmLimit       = 100;
+InternalODEModel.GravityField.Earth.PotentialFile  = 'JGM2.cof';
+InternalODEModel.GravityField.Earth.TideModel      = 'None';
+
+
+%----------------------------------------
+%---------- Propagators
+%----------------------------------------
+
+Create Propagator DefaultProp;
+% Runge-Kutta 8(9) adaptive step integrator -- the standard GMAT high-accuracy
+% integrator for orbit propagation.  The adaptive step control adjusts step
+% size automatically to satisfy the Accuracy tolerance at each integration step.
+%
+% InitialStepSize : 60 s  -- first attempted step; RK89 will adjust from here
+% Accuracy        : 1e-12 -- relative error tolerance per step (very tight;
+%                             adequate for LEO without being unnecessarily slow)
+% MinStep         : 0.001 s -- smallest allowed step (prevents infinite loop
+%                               on stiff dynamics)
+% MaxStep         : 2700 s  -- largest allowed step (= 45 min ~0.5 orbital period;
+%                               GMAT default; prevents the integrator from stepping
+%                               over an entire orbit half in one go)
+% MaxStepAttempts : 50      -- step rejected and halved up to 50 times before error
+
+DefaultProp.FM               = InternalODEModel;
+DefaultProp.Type             = RungeKutta89;
+DefaultProp.InitialStepSize  = 60;
+DefaultProp.Accuracy         = 9.999999999999999e-12;
+DefaultProp.MinStep          = 0.001;
+DefaultProp.MaxStep          = 2700;
+DefaultProp.MaxStepAttempts  = 50;
+DefaultProp.StopIfAccuracyIsViolated = true;
+
+
+%----------------------------------------
+%---------- EventLocators
+%----------------------------------------
+
+Create ContactLocator AbujaAccess;
+% ContactLocator automatically detects when LEOSat rises above the Abuja
+% minimum elevation angle (5 deg) and falls below it again, recording each
+% access window (Start UTC, End UTC, Duration) to the output file.
+%
+% Algorithm: GMAT uses a root-finding interpolation on the elevation angle
+% as a function of time -- it does NOT step through and test at discrete
+% intervals.  As a result, access durations are reported to millisecond
+% precision (exact elevation = 5 deg crossing found by bisection).
+%
+% Key settings:
+%   Target          : LEOSat          -- the satellite being tracked
+%   Observers       : {Abuja}         -- the ground station
+%   OccultingBodies : {Earth}         -- Earth blocks line-of-sight when
+%                                        the satellite is below the horizon
+%   StepSize        : 10 s            -- internal search step for locating
+%                                        elevation crossings (not output cadence)
+%   UseEntireInterval : true          -- search the full InitialEpoch..FinalEpoch
+%                                        window, not just the propagation window
+%   LightTimeDirection: Transmit      -- light-time correction computed for
+%                                        signal transmitted FROM the spacecraft
+%   ReportTimeFormat  : UTCGregorian  -- output timestamps in human-readable UTC
+
+AbujaAccess.Target              = LEOSat;
+AbujaAccess.Filename            = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_02_ground_station_access\AbujaAccessReport.txt';
+AbujaAccess.OccultingBodies     = {Earth};
+AbujaAccess.InputEpochFormat    = 'TAIModJulian';
+AbujaAccess.InitialEpoch        = '21545';       % 01 Jan 2024 00:00:00 UTC (TAI MJD)
+AbujaAccess.StepSize            = 10;            % search step size (seconds)
+AbujaAccess.FinalEpoch          = '21545.138';   % ~24 h later (= 21545 + 1/7.25 day)
+AbujaAccess.UseLightTimeDelay   = true;
+AbujaAccess.UseStellarAberration = false;
+AbujaAccess.WriteReport         = true;
+AbujaAccess.RunMode             = Automatic;     % compute automatically at run time
+AbujaAccess.UseEntireInterval   = true;
+
+AbujaAccess.Observers           = {Abuja};
+AbujaAccess.LightTimeDirection  = Transmit;
+
+% Output formatting
+AbujaAccess.LeftJustified    = false;
+AbujaAccess.ReportPrecision  = 6;
+AbujaAccess.ReportFormat     = 'Legacy';
+AbujaAccess.IntervalStepSize = 0;
+AbujaAccess.ReportTimeFormat = 'UTCGregorian';
+
+
+%----------------------------------------
+%---------- Subscribers
+%----------------------------------------
+
+% --- 3-D Orbit View ---
+Create OpenFramesInterface LEOView;
+% LEOView renders the satellite orbit in 3-D in the EarthMJ2000Eq inertial
+% frame.  The red orbital track will trace a inclined ellipse (effectively
+% a circle at ECC~0) around Earth, tilted at 51.6 deg to the equatorial
+% plane.  Watching this view live shows the satellite completing ~15.5 orbits
+% during the 24-hour propagation.
+
+LEOView.SolverIterations  = Current;
+LEOView.UpperLeft         = [ 0.07041383570105003 0.1269487750556793 ];
+LEOView.Size              = [ 0.5991352686843731 0.5991091314031181 ];
+LEOView.RelativeZOrder    = 181;
+LEOView.Maximized         = false;
+LEOView.Add               = {LEOSat, Earth};   % show satellite and Earth
+LEOView.View              = {LEOView_View};
+LEOView.CoordinateSystem  = EarthMJ2000Eq;     % inertial frame (X = vernal equinox)
+LEOView.DrawObject        = [ true true ];
+LEOView.DrawTrajectory    = [ true true ];
+LEOView.DrawAxes          = [ false false ];
+LEOView.DrawXYPlane       = [ false false ];
+LEOView.DrawLabel         = [ true true ];
+LEOView.DrawUsePropLabel  = [ false false ];
+LEOView.DrawCenterPoint   = [ true true ];
+LEOView.DrawEndPoints     = [ true true ];
+LEOView.DrawVelocity      = [ false false ];
+LEOView.DrawGrid          = [ false false ];
+LEOView.DrawLineWidth     = [ 2 2 ];
+LEOView.DrawMarkerSize    = [ 10 10 ];
+LEOView.DrawFontSize      = [ 20 20 ];
+LEOView.Axes              = On;
+LEOView.AxesLength        = 12756.2726;   % axis length scaled to ~Earth diameter
+LEOView.AxesLabels        = On;
+LEOView.FrameLabel        = Off;
+LEOView.XYPlane           = On;
+LEOView.EclipticPlane     = Off;
+
+% Star field display settings
+LEOView.EnableStars   = On;
+LEOView.StarCatalog   = 'inp_StarsHYGv3.txt';
+LEOView.StarCount     = 40000;
+LEOView.MinStarMag    = -2;
+LEOView.MaxStarMag    = 6;
+LEOView.MinStarPixels = 1;
+LEOView.MaxStarPixels = 10;
+LEOView.MinStarDimRatio = 0.5;
+
+% Viewer behaviour
+LEOView.ShowPlot            = true;
+LEOView.ShowToolbar         = true;
+LEOView.SolverIterLastN     = 0;
+LEOView.ShowVR              = false;
+LEOView.PlaybackTimeScale   = 3600;   % 1 h of simulation per second in playback
+LEOView.MultisampleAntiAliasing = On;
+LEOView.MSAASamples         = 2;
+LEOView.DrawFontPosition    = {'Top-Right', 'Top-Right'};
+
+% --- 2-D Ground Track ---
+Create GroundTrack GroundTrack;
+% GroundTrack projects the sub-satellite point onto a 2-D Mercator world map.
+% Over 24 hours (~15.5 orbits) the ground track will sweep a classic sinusoidal
+% lattice pattern across the +/-51.6 deg latitude band.  Each successive ground
+% track is shifted ~23 deg westward (because Earth rotates 23.1 deg during one
+% 92.55-min orbit).  The Abuja station marker will appear near 9 N / 7.5 E.
+%
+% Expected result:
+%   ~15 complete sinusoidal traces across all longitudes in 24 h
+%   Latitude range: -51.6 deg to +51.6 deg (hard ceiling = inclination)
+%   Track spacing at equator: ~23 deg in longitude
+
+GroundTrack.SolverIterations     = Current;
+GroundTrack.UpperLeft            = [ 0.4471896232242125 0.532293986636971 ];
+GroundTrack.Size                 = [ 0.5003088326127239 0.4498886414253898 ];
+GroundTrack.RelativeZOrder       = 182;
+GroundTrack.Maximized            = false;
+GroundTrack.CentralBody          = Earth;
+GroundTrack.Add                  = {LEOSat, Abuja};  % satellite track + station marker
+GroundTrack.DataCollectFrequency = 1;
+GroundTrack.UpdatePlotFrequency  = 50;
+GroundTrack.NumPointsToRedraw    = 0;
+GroundTrack.MaxPlotPoints        = 20000;
+GroundTrack.ShowPlot             = true;
+
+
+%----------------------------------------
+%---------- User Objects
+%----------------------------------------
+
+Create OpenFramesView LEOView_View;
+% Initial camera position for the 3-D orbit view.
+% Eye at (30000, 0, 0) km in EarthMJ2000Eq -- roughly 4.4 Earth radii away
+% on the +X (vernal equinox) side; centre at Earth's centre; up = +Z (north pole).
+% This gives a slightly off-equatorial view that shows the orbital inclination well.
+
+LEOView_View.ViewFrame          = CoordinateSystem;
+LEOView_View.ViewTrajectory     = Off;
+LEOView_View.InertialFrame      = Off;
+LEOView_View.SetDefaultLocation = On;
+LEOView_View.DefaultEye         = [ 30000 0 0 ];  % camera position (km)
+LEOView_View.DefaultCenter      = [ 0 0 0 ];       % look-at point (Earth centre)
+LEOView_View.DefaultUp          = [ 0 0 1 ];       % up direction (+Z = north)
+LEOView_View.SetCurrentLocation = Off;
+LEOView_View.FOVy               = 45;              % vertical field of view (deg)
+
+
+%----------------------------------------
+%---------- Mission Sequence
+%----------------------------------------
+
+BeginMissionSequence;
+
+% Propagate LEOSat for exactly 1 day (24 hours = 86400 s).
+%
+% During this propagation GMAT will:
+%   1. Integrate the equations of motion using DefaultProp (RK89, JGM2 4x4)
+%   2. Update LEOView (3-D orbit) and GroundTrack (2-D ground track) at
+%      each integration step
+%   3. Run AbujaAccess (ContactLocator) in the background, detecting and
+%      logging all access windows where LEOSat elevation above Abuja >= 5 deg
+%
+% Expected mission outcome:
+%   - ~15 full orbits completed in 24 h
+%   - ~3 contact events with Abuja (based on ground track geometry and
+%     the 23 deg/orbit westward longitude drift)
+%   - Access report written to AbujaAccessReport.txt (one row per window:
+%     Start UTC, Stop UTC, Duration)
+%   - Ground track confirms +/-51.6 deg latitude coverage band
+%   - No altitude decay (drag off); SMA remains ~6778 km throughout
+
+Propagate DefaultProp(LEOSat) {LEOSat.ElapsedDays = 1};
