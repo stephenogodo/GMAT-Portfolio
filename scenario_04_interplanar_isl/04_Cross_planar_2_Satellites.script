@@ -1,0 +1,82 @@
+%  ============================================================
+%  Scenario 05: Inter-Plane ISL Range Analysis
+%  Two LEO satellites in different orbital planes (RAAN = 0 and 90 deg)
+%  Same SMA, ECC, INC - only RAAN differs
+%  Computes cross-plane ISL range every 60 seconds over 24 hours
+%  ============================================================
+
+%  --- Satellite A: Plane 1, RAAN = 0 deg ---
+Create Spacecraft SatA;
+GMAT SatA.DateFormat = UTCGregorian;
+GMAT SatA.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT SatA.CoordinateSystem = EarthMJ2000Eq;
+GMAT SatA.DisplayStateType = Keplerian;
+GMAT SatA.SMA = 6778.14;
+GMAT SatA.ECC = 0.0001;
+GMAT SatA.INC = 51.6;
+GMAT SatA.RAAN = 0;
+GMAT SatA.AOP = 0;
+GMAT SatA.TA = 0;
+
+%  --- Satellite B: Plane 2, RAAN = 90 deg ---
+Create Spacecraft SatB;
+GMAT SatB.DateFormat = UTCGregorian;
+GMAT SatB.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT SatB.CoordinateSystem = EarthMJ2000Eq;
+GMAT SatB.DisplayStateType = Keplerian;
+GMAT SatB.SMA = 6778.14;
+GMAT SatB.ECC = 0.0001;
+GMAT SatB.INC = 51.6;
+GMAT SatB.RAAN = 90;
+GMAT SatB.AOP = 0;
+GMAT SatB.TA = 0;
+
+%  --- Propagator ---
+Create Propagator DefaultProp;
+
+%  --- Variables ---
+Create Variable ISL_Range THRESHOLD;
+GMAT THRESHOLD = 6500;
+
+%  --- 3D Visualisation ---
+Create OrbitView InterplaneView;
+GMAT InterplaneView.ShowPlot = true;
+GMAT InterplaneView.Add = {SatA, SatB, Earth};
+GMAT InterplaneView.CoordinateSystem = EarthMJ2000Eq;
+GMAT InterplaneView.ViewScaleFactor = 3;
+
+%  --- Ground Track ---
+Create GroundTrackPlot GroundTrack;
+GMAT GroundTrack.ShowPlot = true;
+GMAT GroundTrack.Add = {SatA, SatB};
+GMAT GroundTrack.CentralBody = Earth;
+
+%  --- Main ISL report (every timestep) ---
+Create ReportFile InterplaneISLReport;
+GMAT InterplaneISLReport.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_04_interplanar_isl\InterplaneISLReport.txt';
+GMAT InterplaneISLReport.Add = {SatA.UTCGregorian, SatA.EarthMJ2000Eq.X, SatA.EarthMJ2000Eq.Y, SatA.EarthMJ2000Eq.Z, SatB.EarthMJ2000Eq.X, SatB.EarthMJ2000Eq.Y, SatB.EarthMJ2000Eq.Z, ISL_Range};
+GMAT InterplaneISLReport.WriteHeaders = true;
+
+%  --- Alert report: only when range drops below threshold (link viable) ---
+Create ReportFile InterplaneISLWindows;
+GMAT InterplaneISLWindows.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_04_interplanar_isl\InterplaneISLWindows.txt';
+GMAT InterplaneISLWindows.Add = {SatA.UTCGregorian, ISL_Range};
+GMAT InterplaneISLWindows.WriteHeaders = true;
+
+%  ============================================================
+%  Mission Sequence
+%  ============================================================
+BeginMissionSequence;
+
+%  Initial step to seed the computation
+Propagate DefaultProp(SatA, SatB) {SatA.ElapsedSecs = 60};
+ISL_Range = sqrt((SatA.EarthMJ2000Eq.X - SatB.EarthMJ2000Eq.X)^2 + (SatA.EarthMJ2000Eq.Y - SatB.EarthMJ2000Eq.Y)^2 + (SatA.EarthMJ2000Eq.Z - SatB.EarthMJ2000Eq.Z)^2);
+
+While SatA.ElapsedDays < 1
+   Propagate DefaultProp(SatA, SatB) {SatA.ElapsedSecs = 60};
+   ISL_Range = sqrt((SatA.EarthMJ2000Eq.X - SatB.EarthMJ2000Eq.X)^2 + (SatA.EarthMJ2000Eq.Y - SatB.EarthMJ2000Eq.Y)^2 + (SatA.EarthMJ2000Eq.Z - SatB.EarthMJ2000Eq.Z)^2);
+   Report InterplaneISLReport SatA.UTCGregorian SatA.EarthMJ2000Eq.X SatA.EarthMJ2000Eq.Y SatA.EarthMJ2000Eq.Z SatB.EarthMJ2000Eq.X SatB.EarthMJ2000Eq.Y SatB.EarthMJ2000Eq.Z ISL_Range;
+   If ISL_Range < THRESHOLD
+      Report InterplaneISLWindows SatA.UTCGregorian ISL_Range;
+   EndIf;
+EndWhile;
