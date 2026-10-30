@@ -1,0 +1,50 @@
+Create Spacecraft LEOSat1;
+GMAT LEOSat1.DateFormat = UTCGregorian;
+GMAT LEOSat1.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT LEOSat1.CoordinateSystem = EarthMJ2000Eq;
+GMAT LEOSat1.DisplayStateType = Keplerian;
+GMAT LEOSat1.SMA = 6778.14;
+GMAT LEOSat1.ECC = 0.0001;
+GMAT LEOSat1.INC = 51.6;
+GMAT LEOSat1.RAAN = 0;
+GMAT LEOSat1.AOP = 0;
+GMAT LEOSat1.TA = 0;
+
+Create Spacecraft LEOSat2;
+GMAT LEOSat2.DateFormat = UTCGregorian;
+GMAT LEOSat2.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT LEOSat2.CoordinateSystem = EarthMJ2000Eq;
+GMAT LEOSat2.DisplayStateType = Keplerian;
+GMAT LEOSat2.SMA = 6778.14;
+GMAT LEOSat2.ECC = 0.0001;
+GMAT LEOSat2.INC = 51.6;
+GMAT LEOSat2.RAAN = 0;
+GMAT LEOSat2.AOP = 0;
+GMAT LEOSat2.TA = 45;
+
+Create Propagator DefaultProp;
+
+Create OrbitView ConstellationView;
+GMAT ConstellationView.ShowPlot = true;
+GMAT ConstellationView.Add = {LEOSat1, LEOSat2, Earth};
+GMAT ConstellationView.CoordinateSystem = EarthMJ2000Eq;
+
+Create GroundTrackPlot GroundTrack;
+GMAT GroundTrack.ShowPlot = true;
+GMAT GroundTrack.Add = {LEOSat1, LEOSat2};
+GMAT GroundTrack.CentralBody = Earth;
+
+Create Variable ISL_Range;
+
+Create ReportFile ISLReport;
+GMAT ISLReport.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_03a_coplanar_isl_2sat\ISLReport.txt';
+GMAT ISLReport.Add = {LEOSat1.UTCGregorian, LEOSat1.EarthMJ2000Eq.X, LEOSat1.EarthMJ2000Eq.Y, LEOSat1.EarthMJ2000Eq.Z, LEOSat2.EarthMJ2000Eq.X, LEOSat2.EarthMJ2000Eq.Y, LEOSat2.EarthMJ2000Eq.Z, ISL_Range};
+GMAT ISLReport.WriteHeaders = true;
+
+BeginMissionSequence;
+Propagate DefaultProp(LEOSat1, LEOSat2) {LEOSat1.ElapsedSecs = 60};
+ISL_Range = sqrt((LEOSat1.EarthMJ2000Eq.X - LEOSat2.EarthMJ2000Eq.X)^2 + (LEOSat1.EarthMJ2000Eq.Y - LEOSat2.EarthMJ2000Eq.Y)^2 + (LEOSat1.EarthMJ2000Eq.Z - LEOSat2.EarthMJ2000Eq.Z)^2);
+While LEOSat1.ElapsedDays < 1
+   Propagate DefaultProp(LEOSat1, LEOSat2) {LEOSat1.ElapsedSecs = 60};
+   ISL_Range = sqrt((LEOSat1.EarthMJ2000Eq.X - LEOSat2.EarthMJ2000Eq.X)^2 + (LEOSat1.EarthMJ2000Eq.Y - LEOSat2.EarthMJ2000Eq.Y)^2 + (LEOSat1.EarthMJ2000Eq.Z - LEOSat2.EarthMJ2000Eq.Z)^2);
+EndWhile;

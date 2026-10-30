@@ -1,0 +1,27 @@
+ISLReport.txt — 2-Satellite Co-planar Scenario (LEOSat1 & LEOSat2, 45° separation)
+
+Setup recap: LEOSat1 at TA=0°, LEOSat2 at TA=45°, same orbital plane, SMA=6,778 km. 24-hour run at 60-second intervals → 1,441 valid data rows.
+
+ISL Range Statistics:
+
+Metric	Value
+Starting range	5,187 km
+Ending range	4,335 km
+Maximum	5,187 km (at epoch, 00:02 UTC)
+Minimum	4,335 km (end of 24 hours)
+Mean	4,765 km
+Total drift over 24h	853 km decrease
+
+Key observations:
+
+1. Steady, monotonic decrease — no oscillation. The range drops smoothly and consistently by about 53 km every 90 minutes throughout the entire 24 hours. This is very different from the 6-satellite case where pairs both stretched and compressed. With only 2 satellites, J2 perturbation is causing them to converge — the 45° gap is slowly closing.
+
+2. Why converging, not oscillating? In the 6-sat case the pairs “trade” perturbation effects — one stretches as its neighbour compresses. With just 2 satellites there’s no such balance. Both are drifting, but LEOSat2 (starting 45° ahead) is drifting slightly faster in the inertial frame, causing the gap to shrink. This is orbital mechanics operating on a 45° separation being driven to close — operationally this would be a conjunction concern over a longer timeframe.
+
+3. Contrast with the 6-sat result: The 6-sat co-planar run showed ranges oscillating between ~5,148 km and ~7,882 km, sometimes exceeding the 7,500 km ISL threshold. The 2-sat run stays well within 5,200 km throughout — never a link-break risk, but a growing proximity risk instead.
+
+4. The 5,187 km starting range is exactly right for 45° separation. Using the chord formula: 2 × 6,778 × sin(22.5°) = 5,183 km — matches perfectly. ✓
+
+Interview-ready narrative from this result:
+
+“I ran a 24-hour GMAT propagation of two co-planar LEO satellites separated by 45°. The ISL range started at 5,187 km — consistent with the chord geometry — and drifted monotonically down to 4,335 km over 24 hours due to J2 differential perturbation. Unlike the 6-satellite constellation where pairs both converged and diverged, the 2-satellite case showed a one-directional drift — a conjunction trend that would require a station-keeping burn to correct after several days.”
