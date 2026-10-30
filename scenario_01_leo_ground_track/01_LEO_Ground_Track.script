@@ -1,0 +1,26 @@
+Create Spacecraft LEOSat;
+GMAT LEOSat.DateFormat = UTCGregorian;
+GMAT LEOSat.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT LEOSat.CoordinateSystem = EarthMJ2000Eq;
+GMAT LEOSat.DisplayStateType = Keplerian;
+GMAT LEOSat.SMA = 6778.14;
+GMAT LEOSat.ECC = 0.0001;
+GMAT LEOSat.INC = 51.6;
+GMAT LEOSat.RAAN = 0;
+GMAT LEOSat.AOP = 0;
+GMAT LEOSat.TA = 0;
+
+Create Propagator DefaultProp;
+
+Create OrbitView LEOView;
+GMAT LEOView.ShowPlot = true;
+GMAT LEOView.Add = {LEOSat, Earth};
+GMAT LEOView.CoordinateSystem = EarthMJ2000Eq;
+
+Create GroundTrackPlot GroundTrack;
+GMAT GroundTrack.ShowPlot = true;
+GMAT GroundTrack.Add = {LEOSat};
+GMAT GroundTrack.CentralBody = Earth;
+
+BeginMissionSequence;
+Propagate DefaultProp(LEOSat) {LEOSat.ElapsedDays = 1};
