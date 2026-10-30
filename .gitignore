@@ -1,0 +1,22 @@
+# Word lock files
+~$*
+
+# GMAT output / ephemeris / report files
+# *.data excluded globally but DC iteration files are kept as scenario outputs
+*.bsp
+*.eph
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*~
