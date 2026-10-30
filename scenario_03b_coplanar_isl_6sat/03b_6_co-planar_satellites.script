@@ -1,0 +1,168 @@
+%  ============================================================
+%  Scenario 04b: 6 Co-planar Satellites - ISL Range Analysis
+%  Six LEO satellites at 60-degree true anomaly spacing
+%  Computes all adjacent-pair ISL ranges every 60 seconds over 24 hours
+%  ISL6Report.txt : all-links-normal rows (every pair below threshold)
+%  ISLViolations.txt : one row per violation event, pair + range logged
+%  ============================================================
+
+Create Spacecraft S1;
+GMAT S1.DateFormat = UTCGregorian;
+GMAT S1.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT S1.CoordinateSystem = EarthMJ2000Eq;
+GMAT S1.DisplayStateType = Keplerian;
+GMAT S1.SMA = 6778.14;
+GMAT S1.ECC = 0.0001;
+GMAT S1.INC = 51.6;
+GMAT S1.RAAN = 0;
+GMAT S1.AOP = 0;
+GMAT S1.TA = 0;
+
+Create Spacecraft S2;
+GMAT S2.DateFormat = UTCGregorian;
+GMAT S2.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT S2.CoordinateSystem = EarthMJ2000Eq;
+GMAT S2.DisplayStateType = Keplerian;
+GMAT S2.SMA = 6778.14;
+GMAT S2.ECC = 0.0001;
+GMAT S2.INC = 51.6;
+GMAT S2.RAAN = 0;
+GMAT S2.AOP = 0;
+GMAT S2.TA = 60;
+
+Create Spacecraft S3;
+GMAT S3.DateFormat = UTCGregorian;
+GMAT S3.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT S3.CoordinateSystem = EarthMJ2000Eq;
+GMAT S3.DisplayStateType = Keplerian;
+GMAT S3.SMA = 6778.14;
+GMAT S3.ECC = 0.0001;
+GMAT S3.INC = 51.6;
+GMAT S3.RAAN = 0;
+GMAT S3.AOP = 0;
+GMAT S3.TA = 120;
+
+Create Spacecraft S4;
+GMAT S4.DateFormat = UTCGregorian;
+GMAT S4.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT S4.CoordinateSystem = EarthMJ2000Eq;
+GMAT S4.DisplayStateType = Keplerian;
+GMAT S4.SMA = 6778.14;
+GMAT S4.ECC = 0.0001;
+GMAT S4.INC = 51.6;
+GMAT S4.RAAN = 0;
+GMAT S4.AOP = 0;
+GMAT S4.TA = 180;
+
+Create Spacecraft S5;
+GMAT S5.DateFormat = UTCGregorian;
+GMAT S5.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT S5.CoordinateSystem = EarthMJ2000Eq;
+GMAT S5.DisplayStateType = Keplerian;
+GMAT S5.SMA = 6778.14;
+GMAT S5.ECC = 0.0001;
+GMAT S5.INC = 51.6;
+GMAT S5.RAAN = 0;
+GMAT S5.AOP = 0;
+GMAT S5.TA = 240;
+
+Create Spacecraft S6;
+GMAT S6.DateFormat = UTCGregorian;
+GMAT S6.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT S6.CoordinateSystem = EarthMJ2000Eq;
+GMAT S6.DisplayStateType = Keplerian;
+GMAT S6.SMA = 6778.14;
+GMAT S6.ECC = 0.0001;
+GMAT S6.INC = 51.6;
+GMAT S6.RAAN = 0;
+GMAT S6.AOP = 0;
+GMAT S6.TA = 300;
+
+Create Propagator DefaultProp;
+
+Create OrbitView ConstellationView;
+GMAT ConstellationView.ShowPlot = true;
+GMAT ConstellationView.Add = {S1, S2, S3, S4, S5, S6, Earth};
+GMAT ConstellationView.CoordinateSystem = EarthMJ2000Eq;
+
+Create GroundTrackPlot GroundTrack;
+GMAT GroundTrack.ShowPlot = true;
+GMAT GroundTrack.Add = {S1, S2, S3, S4, S5, S6};
+GMAT GroundTrack.CentralBody = Earth;
+
+Create Variable R12 R23 R34 R45 R56 R61 THRESHOLD ANYVIOLATION;
+GMAT THRESHOLD = 7500;
+
+%  Master report: all six pair ranges, every timestep where no pair violates
+%  NOTE: Add = {} is intentionally empty - auto-streaming is disabled.
+%  Only explicit Report commands inside the loop write to this file.
+Create ReportFile ISL6Report;
+GMAT ISL6Report.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_03b_coplanar_isl_6sat\ISL6Report.txt';
+GMAT ISL6Report.WriteHeaders = true;
+
+%  Violation log: single file, one row per violating pair per timestep
+%  Columns: Timestamp | PairID | Range_km
+%  NOTE: Add = {} is intentionally empty - auto-streaming is disabled.
+Create ReportFile ISLViolations;
+GMAT ISLViolations.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_03b_coplanar_isl_6sat\ISLViolations.txt';
+GMAT ISLViolations.WriteHeaders = true;
+
+BeginMissionSequence;
+
+While S1.ElapsedDays < 1
+   Propagate DefaultProp(S1, S2, S3, S4, S5, S6) {S1.ElapsedSecs = 60};
+
+   R12 = sqrt((S1.EarthMJ2000Eq.X-S2.EarthMJ2000Eq.X)^2 + (S1.EarthMJ2000Eq.Y-S2.EarthMJ2000Eq.Y)^2 + (S1.EarthMJ2000Eq.Z-S2.EarthMJ2000Eq.Z)^2);
+   R23 = sqrt((S2.EarthMJ2000Eq.X-S3.EarthMJ2000Eq.X)^2 + (S2.EarthMJ2000Eq.Y-S3.EarthMJ2000Eq.Y)^2 + (S2.EarthMJ2000Eq.Z-S3.EarthMJ2000Eq.Z)^2);
+   R34 = sqrt((S3.EarthMJ2000Eq.X-S4.EarthMJ2000Eq.X)^2 + (S3.EarthMJ2000Eq.Y-S4.EarthMJ2000Eq.Y)^2 + (S3.EarthMJ2000Eq.Z-S4.EarthMJ2000Eq.Z)^2);
+   R45 = sqrt((S4.EarthMJ2000Eq.X-S5.EarthMJ2000Eq.X)^2 + (S4.EarthMJ2000Eq.Y-S5.EarthMJ2000Eq.Y)^2 + (S4.EarthMJ2000Eq.Z-S5.EarthMJ2000Eq.Z)^2);
+   R56 = sqrt((S5.EarthMJ2000Eq.X-S6.EarthMJ2000Eq.X)^2 + (S5.EarthMJ2000Eq.Y-S6.EarthMJ2000Eq.Y)^2 + (S5.EarthMJ2000Eq.Z-S6.EarthMJ2000Eq.Z)^2);
+   R61 = sqrt((S6.EarthMJ2000Eq.X-S1.EarthMJ2000Eq.X)^2 + (S6.EarthMJ2000Eq.Y-S1.EarthMJ2000Eq.Y)^2 + (S6.EarthMJ2000Eq.Z-S1.EarthMJ2000Eq.Z)^2);
+
+   %  Track whether ANY pair violates this timestep
+   ANYVIOLATION = 0;
+   If R12 > THRESHOLD
+      ANYVIOLATION = 1;
+   EndIf;
+   If R23 > THRESHOLD
+      ANYVIOLATION = 1;
+   EndIf;
+   If R34 > THRESHOLD
+      ANYVIOLATION = 1;
+   EndIf;
+   If R45 > THRESHOLD
+      ANYVIOLATION = 1;
+   EndIf;
+   If R56 > THRESHOLD
+      ANYVIOLATION = 1;
+   EndIf;
+   If R61 > THRESHOLD
+      ANYVIOLATION = 1;
+   EndIf;
+
+   %  ISL6Report: write this timestep only when ALL pairs are below threshold
+   If ANYVIOLATION == 0
+      Report ISL6Report S1.UTCGregorian R12 R23 R34 R45 R56 R61;
+   EndIf;
+
+   %  ISLViolations: write one row per violating pair only
+   If R12 > THRESHOLD
+      Report ISLViolations S1.UTCGregorian R12;
+   EndIf;
+   If R23 > THRESHOLD
+      Report ISLViolations S1.UTCGregorian R23;
+   EndIf;
+   If R34 > THRESHOLD
+      Report ISLViolations S1.UTCGregorian R34;
+   EndIf;
+   If R45 > THRESHOLD
+      Report ISLViolations S1.UTCGregorian R45;
+   EndIf;
+   If R56 > THRESHOLD
+      Report ISLViolations S1.UTCGregorian R56;
+   EndIf;
+   If R61 > THRESHOLD
+      Report ISLViolations S1.UTCGregorian R61;
+   EndIf;
+
+EndWhile;

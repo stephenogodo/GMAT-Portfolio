@@ -1,0 +1,19 @@
+Scenario 04b — Final Verified Results (threshold = 7,500 km)
+
+File	Rows	Meaning
+ISL6Report.txt	957	All-clear minutes — every pair below 7,500 km
+ISLViolations.txt	960	One row per violating pair per minute
+
+Violation breakdown:
+
+Pair	Violation rows	First breach	Peak range
+R61	8	15:58 UTC	7,509.6 km
+R34	952	16:06 UTC	7,880.7 km
+R12, R23, R45, R56	0	Never	Below threshold
+
+Reconciliation — all 1,440 minutes accounted for:
+
+957 all-clear minutes → one ISL6Report row each
+483 violation minutes → at least one pair breaching
+Of those 483, 477 had both R34 and R61 breaching simultaneously (hence 960 rows = 483 + 477)
+Only 6 minutes had R61 alone breaching before R34 joined in (15:58–16:05 UTC)

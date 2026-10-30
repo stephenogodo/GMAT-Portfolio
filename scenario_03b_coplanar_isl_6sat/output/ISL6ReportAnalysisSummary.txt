@@ -1,0 +1,24 @@
+ISL6Report.txt — 24-hour adjacency analysis results
+
+The report captured 2,882 timesteps at 60-second intervals. Here’s what the data shows:
+
+Pair	Min Range (km)	Max Range (km)	Notes
+R12 (S1↔S2)	5,581	6,778	Oscillates below nominal
+R23 (S2↔S3)	6,778	6,808	Very stable — near constant
+R34 (S3↔S4)	6,776	7,865	Wide excursion — breaches threshold
+R45 (S4↔S5)	5,148	6,779	Largest dip below nominal
+R56 (S5↔S6)	6,778	6,802	Very stable
+R61 (S6↔S1)	6,775	7,882	Wide excursion — breaches threshold
+
+ISLAlerts.txt — threshold breaches (>7,500 km)
+
+First breach: 01 Jan 2024 15:58:00 — pair R61 hit exactly 7,500 km
+969 out of 2,882 timesteps (about 33% of the 24-hour window) had at least one pair exceeding the threshold
+Pairs R34 and R61 are the primary culprits, reaching up to ~7,865 km and ~7,882 km respectively
+R45 and R12 go the other way — dipping to 5,148 km and 5,581 km — satellites bunching together
+
+What this means physically:
+
+This is Earth’s oblateness (J2 perturbation) at work. The GMAT propagator (RK8/9 with JGM-2 gravity) is modelling J2, which causes differential nodal precession and argument of perigee drift. Over 24 hours the satellites — though co-planar at epoch — slowly drift relative to each other, stretching some pairs and compressing others. That’s why R23 and R56 stay near 6,778 km (close to the regular hexagon chord length = SMA) while the adjacent pairs rotate into wider and narrower spacings.
+
+In a real constellation you’d add station-keeping manoeuvres or a Walker design to control this drift —
