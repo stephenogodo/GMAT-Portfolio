@@ -1,0 +1,106 @@
+%  ============================================================
+%  Scenario 06: Hohmann Transfer - Orbit Restoration Manoeuvre
+%  Satellite starts in degraded orbit (SMA = 6758.14 km)
+%  Two impulsive burns restore it to nominal orbit (SMA = 6778.14 km)
+%  Burn 1 (prograde at perigee): raises apogee to target altitude
+%  Burn 2 (prograde at apogee): circularises at target altitude
+%  Report captures SMA at key milestones to verify correction
+%
+%  CORRECTED BURN VALUES (from Hohmann_Transfer_Delta-V_Calculator.py):
+%    DV1 = 0.005671 km/s  (5.671 m/s)
+%    DV2 = 0.005667 km/s  (5.667 m/s)
+%    Total = 11.338 m/s
+%  ============================================================
+
+Create Spacecraft LEOSat;
+GMAT LEOSat.DateFormat = UTCGregorian;
+GMAT LEOSat.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT LEOSat.CoordinateSystem = EarthMJ2000Eq;
+GMAT LEOSat.DisplayStateType = Keplerian;
+GMAT LEOSat.SMA = 6758.14;
+GMAT LEOSat.ECC = 0.0001;
+GMAT LEOSat.INC = 51.6;
+GMAT LEOSat.RAAN = 0;
+GMAT LEOSat.AOP = 0;
+GMAT LEOSat.TA = 0;
+GMAT LEOSat.DryMass = 500;
+GMAT LEOSat.Cd = 2.2;
+GMAT LEOSat.Cr = 1.8;
+GMAT LEOSat.DragArea = 5;
+GMAT LEOSat.SRPArea = 5;
+
+Create Propagator DefaultProp;
+GMAT DefaultProp.FM = DefaultForceModel;
+GMAT DefaultProp.Type = RungeKutta89;
+
+Create ForceModel DefaultForceModel;
+GMAT DefaultForceModel.CentralBody = Earth;
+GMAT DefaultForceModel.PrimaryBodies = {Earth};
+GMAT DefaultForceModel.GravityField.Earth.Degree = 4;
+GMAT DefaultForceModel.GravityField.Earth.Order = 4;
+
+Create ImpulsiveBurn Burn1;
+GMAT Burn1.CoordinateSystem = Local;
+GMAT Burn1.Origin = Earth;
+GMAT Burn1.Axes = VNB;
+GMAT Burn1.Element1 = 0.005671;
+GMAT Burn1.Element2 = 0;
+GMAT Burn1.Element3 = 0;
+
+Create ImpulsiveBurn Burn2;
+GMAT Burn2.CoordinateSystem = Local;
+GMAT Burn2.Origin = Earth;
+GMAT Burn2.Axes = VNB;
+GMAT Burn2.Element1 = 0.005667;
+GMAT Burn2.Element2 = 0;
+GMAT Burn2.Element3 = 0;
+
+Create OrbitView ManoeuvreView;
+GMAT ManoeuvreView.ShowPlot = true;
+GMAT ManoeuvreView.Add = {LEOSat, Earth};
+GMAT ManoeuvreView.CoordinateSystem = EarthMJ2000Eq;
+GMAT ManoeuvreView.DrawObject = [true true];
+GMAT ManoeuvreView.ViewScaleFactor = 3;
+GMAT ManoeuvreView.ViewUpCoordinateSystem = EarthMJ2000Eq;
+GMAT ManoeuvreView.ViewUpAxis = Z;
+
+Create GroundTrackPlot GroundTrack;
+GMAT GroundTrack.ShowPlot = true;
+GMAT GroundTrack.Add = {LEOSat};
+GMAT GroundTrack.CentralBody = Earth;
+
+Create XYPlot SMAPlot;
+GMAT SMAPlot.XVariable = LEOSat.ElapsedSecs;
+GMAT SMAPlot.YVariables = {LEOSat.SMA};
+GMAT SMAPlot.ShowGrid = true;
+GMAT SMAPlot.ShowPlot = true;
+
+Create XYPlot ECCPlot;
+GMAT ECCPlot.XVariable = LEOSat.ElapsedSecs;
+GMAT ECCPlot.YVariables = {LEOSat.ECC};
+GMAT ECCPlot.ShowGrid = true;
+GMAT ECCPlot.ShowPlot = true;
+
+Create ReportFile ManoeuvreReport;
+GMAT ManoeuvreReport.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_05_hohmann_orbit_restoration\ManoeuvreReport.txt';
+GMAT ManoeuvreReport.Add = {LEOSat.UTCGregorian, LEOSat.SMA, LEOSat.ECC, LEOSat.INC, LEOSat.TA};
+GMAT ManoeuvreReport.WriteHeaders = true;
+
+BeginMissionSequence;
+
+Report ManoeuvreReport LEOSat.UTCGregorian LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.TA;
+Propagate DefaultProp(LEOSat) {LEOSat.ElapsedSecs = 5440};
+
+Propagate DefaultProp(LEOSat) {LEOSat.Periapsis};
+Report ManoeuvreReport LEOSat.UTCGregorian LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.TA;
+Maneuver Burn1(LEOSat);
+Report ManoeuvreReport LEOSat.UTCGregorian LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.TA;
+
+Propagate DefaultProp(LEOSat) {LEOSat.Apoapsis};
+Report ManoeuvreReport LEOSat.UTCGregorian LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.TA;
+
+Maneuver Burn2(LEOSat);
+Report ManoeuvreReport LEOSat.UTCGregorian LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.TA;
+
+Propagate DefaultProp(LEOSat) {LEOSat.ElapsedSecs = 5440};
+Report ManoeuvreReport LEOSat.UTCGregorian LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.TA;
