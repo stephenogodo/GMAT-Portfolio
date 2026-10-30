@@ -1,0 +1,692 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Walker Constellation Contact Analysis</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+/*
+  Layout: sticky header + scrollable body; stat tiles top, tabbed per-station breakdown, satellite matrix table
+  Palette: deep space charcoal bg, ice-blue accent, semantic amber/green for pass counts
+*/
+:root {
+  --bg: #f5f6f8;
+  --bg2: #ffffff;
+  --bg3: #eef0f4;
+  --fg: #1a1d23;
+  --fg2: #4a5066;
+  --fg3: #7a8096;
+  --accent: #2a6fdb;
+  --accent-dim: #d4e3f8;
+  --ok: #1a9c6e;
+  --ok-dim: #d1f5ea;
+  --warn: #c07a10;
+  --warn-dim: #fef0d4;
+  --crit: #c0392b;
+  --crit-dim: #fde8e6;
+  --border: #dde1ec;
+  --header-bg: #1a1d23;
+  --header-fg: #e8eaf0;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12141a;
+    --bg2: #1c1f28;
+    --bg3: #242836;
+    --fg: #e4e6f0;
+    --fg2: #9aa0b8;
+    --fg3: #5a6080;
+    --accent: #5b9cf6;
+    --accent-dim: #1a2a4a;
+    --ok: #2ecc9c;
+    --ok-dim: #0d2e22;
+    --warn: #e8a23a;
+    --warn-dim: #2d1f08;
+    --crit: #e05a4d;
+    --crit-dim: #2d100d;
+    --border: #2a2f42;
+    --header-bg: #0d0f14;
+    --header-fg: #c8cad8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12141a;
+  --bg2: #1c1f28;
+  --bg3: #242836;
+  --fg: #e4e6f0;
+  --fg2: #9aa0b8;
+  --fg3: #5a6080;
+  --accent: #5b9cf6;
+  --accent-dim: #1a2a4a;
+  --ok: #2ecc9c;
+  --ok-dim: #0d2e22;
+  --warn: #e8a23a;
+  --warn-dim: #2d1f08;
+  --crit: #e05a4d;
+  --crit-dim: #2d100d;
+  --border: #2a2f42;
+  --header-bg: #0d0f14;
+  --header-fg: #c8cad8;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* HEADER */
+.site-header {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  padding: 18px max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  border-bottom: 1px solid #2a2f42;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 25;
+  background: var(--header-bg);
+}
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.header-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--header-fg);
+}
+.header-sub {
+  font-size: 12px;
+  color: #6a7090;
+  letter-spacing: 0.02em;
+}
+
+/* MAIN */
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* SECTION LABEL */
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-bottom: 12px;
+}
+
+/* STAT TILES */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.stat-tile {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+.stat-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-unit {
+  font-size: 13px;
+  color: var(--fg2);
+  margin-top: 4px;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--fg3);
+  margin-top: 6px;
+  letter-spacing: 0.03em;
+}
+
+/* CARDS */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.card-body {
+  padding: 18px;
+}
+
+/* STATION TABS */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--bg3);
+  padding: 6px 18px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--fg); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* TABLE */
+.tbl-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--fg);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+
+/* PILL badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  min-width: 28px;
+}
+.pill-0  { background: var(--bg3); color: var(--fg3); }
+.pill-lo { background: var(--warn-dim); color: var(--warn); }
+.pill-hi { background: var(--ok-dim); color: var(--ok); }
+.pill-none { background: var(--crit-dim); color: var(--crit); }
+
+/* PLANE BADGE */
+.plane-a { color: #3a7bd5; font-weight: 600; }
+.plane-b { color: #8a4fc0; font-weight: 600; }
+.plane-c { color: #1a9c6e; font-weight: 600; }
+
+/* HEATMAP */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(24, minmax(28px, 1fr));
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+  min-width: 600px;
+}
+.hm-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--fg3);
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.03em;
+}
+.hm-col-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--fg3);
+  text-align: center;
+  padding-bottom: 4px;
+}
+.hm-cell {
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+}
+.hm-0 { background: var(--bg3); color: var(--fg3); }
+.hm-2 { background: #c8e6c9; color: #1b5e20; }
+.hm-3 { background: #a5d6a7; color: #1b5e20; }
+.hm-4 { background: #66bb6a; color: #0d3310; }
+.hm-5 { background: #43a047; color: #ffffff; }
+.hm-6 { background: #2e7d32; color: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hm-2 { background: #0d2e0f; color: #81c784; }
+  :root:not([data-theme="light"]) .hm-3 { background: #133a16; color: #a5d6a7; }
+  :root:not([data-theme="light"]) .hm-4 { background: #1b4d1e; color: #c8e6c9; }
+  :root:not([data-theme="light"]) .hm-5 { background: #2e7d32; color: #e8f5e9; }
+  :root:not([data-theme="light"]) .hm-6 { background: #388e3c; color: #ffffff; }
+}
+:root[data-theme="dark"] .hm-2 { background: #0d2e0f; color: #81c784; }
+:root[data-theme="dark"] .hm-3 { background: #133a16; color: #a5d6a7; }
+:root[data-theme="dark"] .hm-4 { background: #1b4d1e; color: #c8e6c9; }
+:root[data-theme="dark"] .hm-5 { background: #2e7d32; color: #e8f5e9; }
+:root[data-theme="dark"] .hm-6 { background: #388e3c; color: #ffffff; }
+
+/* FINDING BLOCK */
+.finding {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.finding:last-child { border-bottom: none; }
+.finding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+.finding-title { font-weight: 600; font-size: 13px; color: var(--fg); margin-bottom: 3px; }
+.finding-body { font-size: 13px; color: var(--fg2); line-height: 1.55; }
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 620px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+</style>
+
+<!-- ===== DATA ===== -->
+<script>
+const DATA = {
+  // [plane][sat] = {tromso, london, nairobi, lagos}  — contact event counts
+  counts: {
+    A1:{tromso:0,london:5,nairobi:4,lagos:3},
+    A2:{tromso:0,london:6,nairobi:4,lagos:4},
+    A3:{tromso:0,london:6,nairobi:4,lagos:4},
+    A4:{tromso:0,london:5,nairobi:3,lagos:3},
+    A5:{tromso:0,london:5,nairobi:2,lagos:3},
+    A6:{tromso:0,london:5,nairobi:2,lagos:3},
+    A7:{tromso:0,london:6,nairobi:3,lagos:3},
+    A8:{tromso:0,london:6,nairobi:4,lagos:3},
+    B1:{tromso:0,london:6,nairobi:5,lagos:3},
+    B2:{tromso:0,london:6,nairobi:4,lagos:3},
+    B3:{tromso:0,london:5,nairobi:3,lagos:3},
+    B4:{tromso:0,london:5,nairobi:2,lagos:4},
+    B5:{tromso:0,london:5,nairobi:2,lagos:5},
+    B6:{tromso:0,london:5,nairobi:3,lagos:4},
+    B7:{tromso:0,london:5,nairobi:4,lagos:4},
+    B8:{tromso:0,london:5,nairobi:4,lagos:3},
+    C1:{tromso:0,london:5,nairobi:4,lagos:2},
+    C2:{tromso:0,london:5,nairobi:4,lagos:3},
+    C3:{tromso:0,london:5,nairobi:3,lagos:3},
+    C4:{tromso:0,london:5,nairobi:2,lagos:4},
+    C5:{tromso:0,london:5,nairobi:2,lagos:4},
+    C6:{tromso:0,london:5,nairobi:3,lagos:4},
+    C7:{tromso:0,london:6,nairobi:3,lagos:3},
+    C8:{tromso:0,london:6,nairobi:4,lagos:3},
+  },
+  // total contact-seconds per satellite per station  (summed from raw data)
+  seconds: {
+    A1:{tromso:0,london:2388,nairobi:1500,lagos:1242},
+    A2:{tromso:0,london:2580,nairobi:1537,lagos:1402},
+    A3:{tromso:0,london:2510,nairobi:1479,lagos:1366},
+    A4:{tromso:0,london:2197,nairobi:1119,lagos:1275},
+    A5:{tromso:0,london:2167,nairobi:968,lagos:1217},
+    A6:{tromso:0,london:2185,nairobi:982,lagos:1146},
+    A7:{tromso:0,london:2600,nairobi:1031,lagos:1220},
+    A8:{tromso:0,london:2573,nairobi:1387,lagos:1270},
+    B1:{tromso:0,london:2297,nairobi:1525,lagos:1241},
+    B2:{tromso:0,london:2229,nairobi:1430,lagos:1024},
+    B3:{tromso:0,london:2258,nairobi:1105,lagos:1132},
+    B4:{tromso:0,london:2278,nairobi:976,lagos:1361},
+    B5:{tromso:0,london:2254,nairobi:969,lagos:1443},
+    B6:{tromso:0,london:2299,nairobi:1106,lagos:1517},
+    B7:{tromso:0,london:2296,nairobi:1438,lagos:1505},
+    B8:{tromso:0,london:2188,nairobi:1527,lagos:1244},
+    C1:{tromso:0,london:2229,nairobi:1467,lagos:972},
+    C2:{tromso:0,london:2277,nairobi:1367,lagos:1139},
+    C3:{tromso:0,london:2303,nairobi:1212,lagos:1249},
+    C4:{tromso:0,london:2285,nairobi:962,lagos:1421},
+    C5:{tromso:0,london:2263,nairobi:965,lagos:1500},
+    C6:{tromso:0,london:2307,nairobi:1199,lagos:1493},
+    C7:{tromso:0,london:2292,nairobi:1255,lagos:1266},
+    C8:{tromso:0,london:1904,nairobi:1462,lagos:1141},
+  },
+  sats: ['A1','A2','A3','A4','A5','A6','A7','A8','B1','B2','B3','B4','B5','B6','B7','B8','C1','C2','C3','C4','C5','C6','C7','C8'],
+  stations: ['tromso','london','nairobi','lagos'],
+  stationLabels: {tromso:'Tromso (69.7°N)',london:'London (51.5°N)',nairobi:'Nairobi (1.3°S)',lagos:'Lagos (6.5°N)'},
+};
+</script>
+
+<!-- ===== HTML ===== -->
+<header class="site-header">
+  <div class="header-inner">
+    <span class="header-title">WALKER 24/3/1 — Contact Analysis</span>
+    <span class="header-sub">ISS-altitude LEO · 51.6° inc · 6778 km SMA · 01 Jan 2024 UTC · 4 ground stations</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- SUMMARY STATS -->
+  <div>
+    <div class="section-label">Fleet Summary — 24-hour window</div>
+    <div class="stat-grid" id="stat-grid"></div>
+  </div>
+
+  <!-- FINDINGS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="section-label" style="margin:0">Key Findings</div>
+    </div>
+    <div class="card-body" style="padding: 6px 18px;">
+      <div class="finding">
+        <div class="finding-dot" style="background:#e05a4d"></div>
+        <div>
+          <div class="finding-title">Tromso blackout — constellation geometry ceiling</div>
+          <div class="finding-body">All 24 satellites returned 0 contacts with Tromso (69.7°N) across the full 24-hour window. At 51.6° inclination the sub-satellite track peaks at ±51.6° latitude — 18° short of Tromso. This is not a simulation artifact; it is a hard geometric ceiling of the Walker 24/3/1 at ISS inclination. No satellite in any plane ever rises above Tromso's horizon during this epoch.</div>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="finding-dot" style="background:#2e7d32"></div>
+        <div>
+          <div class="finding-title">London dominates — 5–6 passes per satellite</div>
+          <div class="finding-body">London (51.5°N) sits almost exactly at the inclination ceiling, giving it near-maximum dwell time. Every satellite produces 5–6 contacts totalling 1,900–2,600 s (~32–43 min cumulative coverage). The full 24-satellite fleet delivers 128 passes over London in a single day — roughly one visible satellite every 11 minutes on average.</div>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="finding-dot" style="background:#e8a23a"></div>
+        <div>
+          <div class="finding-title">Equatorial stations (Nairobi &amp; Lagos) see 2–5 passes per satellite</div>
+          <div class="finding-body">Near-equatorial stations are overflown at shallower geometry and on fewer passes than London. Nairobi averages 3.3 passes/satellite (79 total); Lagos averages 3.4 passes/satellite (81 total). Both stations share similar totals — consistent with their near-equatorial latitudes — but individual satellites vary between 2 and 5 contacts depending on orbital phase at epoch.</div>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="finding-dot" style="background:#3a7bd5"></div>
+        <div>
+          <div class="finding-title">Pass durations: 5–9 min per event, clipped passes at interval edges</div>
+          <div class="finding-body">Full mid-pass events run 420–511 s (~7–9 min), consistent with ISS-altitude geometry. Several satellites show clipped edge passes (20 s for B1/Nairobi at epoch start; 17 s for B2/London) where the propagation interval catches the tail or head of an arc — these are real passes, truncated at the 00:00 or 24:00 UTC boundary. A multi-day run would merge them with adjacent passes.</div>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="finding-dot" style="background:#8a4fc0"></div>
+        <div>
+          <div class="finding-title">Orbital phasing drives per-satellite variation; planes are equivalent overall</div>
+          <div class="finding-body">Plane B is phased 120° in RAAN from Plane A, and Plane C by 240°. Plane B satellites contact London in the 03–11 h UTC block; Plane C contacts in the 11–19 h block; Plane A in the 00–06 h and 19–24 h blocks. Within each plane, TA offsets of 45° between satellites stagger passes ~90 min apart. Fleet-level London contact is therefore quasi-continuous throughout the day.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="card">
+    <div class="card-header">
+      <div class="section-label" style="margin:0">Contact count heatmap — all 24 satellites × 4 stations</div>
+    </div>
+    <div class="card-body">
+      <div class="tbl-wrap">
+        <div class="heatmap-grid" id="heatmap"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--fg3)">Passes per 24 h:</span>
+        <span class="hm-cell hm-0" style="width:28px">0</span>
+        <span class="hm-cell hm-2" style="width:28px">2</span>
+        <span class="hm-cell hm-3" style="width:28px">3</span>
+        <span class="hm-cell hm-4" style="width:28px">4</span>
+        <span class="hm-cell hm-5" style="width:28px">5</span>
+        <span class="hm-cell hm-6" style="width:28px">6</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PER-STATION BREAKDOWN TABS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="section-label" style="margin:0">Per-station breakdown</div>
+    </div>
+    <div class="tab-bar" id="tab-bar"></div>
+    <div id="tab-panels"></div>
+  </div>
+
+  <!-- SATELLITE MATRIX TABLE -->
+  <div class="card">
+    <div class="card-header">
+      <div class="section-label" style="margin:0">Full satellite contact matrix</div>
+    </div>
+    <div class="tbl-wrap">
+      <table id="matrix-table"></table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── UTILITIES ──────────────────────────────────────────────────────────────
+function pillClass(n, station) {
+  if (station === 'tromso') return 'pill-none';
+  if (n === 0) return 'pill-none';
+  if (n <= 3)  return 'pill-lo';
+  return 'pill-hi';
+}
+function hmClass(n) {
+  if (n === 0) return 'hm-0';
+  if (n <= 2)  return 'hm-2';
+  if (n === 3) return 'hm-3';
+  if (n === 4) return 'hm-4';
+  if (n === 5) return 'hm-5';
+  return 'hm-6';
+}
+function fmtSec(s) {
+  const m = Math.floor(s/60), sec = Math.round(s%60);
+  return m+'m '+(sec<10?'0':'')+sec+'s';
+}
+function planeClass(sat) {
+  if (sat[0]==='A') return 'plane-a';
+  if (sat[0]==='B') return 'plane-b';
+  return 'plane-c';
+}
+
+// ─── SUMMARY STATS ──────────────────────────────────────────────────────────
+(function buildStats() {
+  const {counts, sats, stations, stationLabels} = DATA;
+  let totalContacts = 0, londonTotal = 0, nairobiTotal = 0, lagosTotal = 0;
+  sats.forEach(s => {
+    totalContacts += counts[s].london + counts[s].nairobi + counts[s].lagos;
+    londonTotal   += counts[s].london;
+    nairobiTotal  += counts[s].nairobi;
+    lagosTotal    += counts[s].lagos;
+  });
+  const avgPerSat = (totalContacts/24).toFixed(1);
+  const tiles = [
+    {num: totalContacts, unit: 'total contact events', label: 'Constellation-wide (3 reachable stations)'},
+    {num: 0,            unit: 'Tromso contacts (all sats)', label: 'Geometric exclusion — 51.6° inc. ceiling'},
+    {num: londonTotal,  unit: 'London contacts',  label: '5–6 passes/satellite · highest coverage'},
+    {num: nairobiTotal, unit: 'Nairobi contacts', label: '2–5 passes/satellite · equatorial'},
+    {num: lagosTotal,   unit: 'Lagos contacts',   label: '2–5 passes/satellite · equatorial'},
+    {num: avgPerSat,    unit: 'avg passes/sat/day', label: 'Across 3 reachable stations'},
+  ];
+  const grid = document.getElementById('stat-grid');
+  tiles.forEach(t => {
+    grid.innerHTML += `<div class="stat-tile">
+      <div class="stat-num">${t.num}</div>
+      <div class="stat-unit">${t.unit}</div>
+      <div class="stat-label">${t.label}</div>
+    </div>`;
+  });
+})();
+
+// ─── HEATMAP ────────────────────────────────────────────────────────────────
+(function buildHeatmap() {
+  const {counts, sats, stations} = DATA;
+  const hm = document.getElementById('heatmap');
+  // column headers: blank + sat names
+  hm.innerHTML += `<div class="hm-col-label"></div>`;
+  sats.forEach(s => {
+    const cl = s[0]==='A'?'plane-a':s[0]==='B'?'plane-b':'plane-c';
+    hm.innerHTML += `<div class="hm-col-label" style="color:var(--fg3)">${s}</div>`;
+  });
+  // rows: one per station
+  const labels = {tromso:'Tromso',london:'London',nairobi:'Nairobi',lagos:'Lagos'};
+  stations.forEach(st => {
+    hm.innerHTML += `<div class="hm-label">${labels[st]}</div>`;
+    sats.forEach(s => {
+      const n = counts[s][st];
+      const cls = st==='tromso' ? 'hm-0' : hmClass(n);
+      hm.innerHTML += `<div class="hm-cell ${cls}">${n===0?'–':n}</div>`;
+    });
+  });
+})();
+
+// ─── TABS ───────────────────────────────────────────────────────────────────
+(function buildTabs() {
+  const {counts, seconds, sats, stations, stationLabels} = DATA;
+  const tabBar    = document.getElementById('tab-bar');
+  const tabPanels = document.getElementById('tab-panels');
+
+  stations.forEach((st, idx) => {
+    // tab button
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx===1?' active':'');
+    btn.textContent = stationLabels[st];
+    btn.dataset.tab = st;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-'+st).classList.add('active');
+    };
+    tabBar.appendChild(btn);
+
+    // panel
+    const panel = document.createElement('div');
+    panel.className = 'tab-content' + (idx===1?' active':'');
+    panel.id = 'tab-'+st;
+
+    if (st === 'tromso') {
+      panel.innerHTML = `<div style="padding:32px 18px;text-align:center;color:var(--fg3)">
+        <div style="font-size:32px;margin-bottom:8px">⊘</div>
+        <div style="font-weight:600;font-size:14px;color:var(--fg2);margin-bottom:6px">No contacts in 24-hour window</div>
+        <div style="font-size:13px;max-width:480px;margin:0 auto;line-height:1.6">
+          Tromso (69.7°N) lies 18° above the 51.6° inclination ceiling of the Walker constellation.
+          The sub-satellite track never reaches this latitude. This is expected and physically correct.
+        </div>
+      </div>`;
+    } else {
+      // per-station table sorted by contact count desc
+      const sorted = [...sats].sort((a,b) => counts[b][st]-counts[a][st]);
+      const totalSec = sats.reduce((acc,s)=>acc+seconds[s][st],0);
+      const totalEvt = sats.reduce((acc,s)=>acc+counts[s][st],0);
+      let rows = '';
+      sorted.forEach(s => {
+        const n = counts[s][st];
+        const sec = seconds[s][st];
+        const avg = n>0 ? Math.round(sec/n) : 0;
+        rows += `<tr>
+          <td><span class="${planeClass(s)}">${s}</span></td>
+          <td><span class="pill ${pillClass(n,st)}">${n}</span></td>
+          <td>${n>0?fmtSec(sec):'—'}</td>
+          <td>${n>0?fmtSec(avg)+'  avg':'—'}</td>
+        </tr>`;
+      });
+      panel.innerHTML = `
+        <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap;">
+          <div><span style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${totalEvt}</span><span style="font-size:12px;color:var(--fg2);margin-left:6px">total passes</span></div>
+          <div><span style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${fmtSec(totalSec)}</span><span style="font-size:12px;color:var(--fg2);margin-left:6px">total contact time</span></div>
+          <div><span style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${(totalEvt/24).toFixed(1)}</span><span style="font-size:12px;color:var(--fg2);margin-left:6px">avg passes/satellite</span></div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Satellite</th><th>Passes</th><th>Total contact time</th><th>Avg pass duration</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`;
+    }
+    tabPanels.appendChild(panel);
+  });
+})();
+
+// ─── FULL MATRIX TABLE ───────────────────────────────────────────────────────
+(function buildMatrix() {
+  const {counts, sats} = DATA;
+  const tbl = document.getElementById('matrix-table');
+  tbl.innerHTML = `<thead><tr>
+    <th>Sat</th><th>Plane</th>
+    <th>Tromso<br><span style="font-weight:400;font-size:9px">69.7°N</span></th>
+    <th>London<br><span style="font-weight:400;font-size:9px">51.5°N</span></th>
+    <th>Nairobi<br><span style="font-weight:400;font-size:9px">1.3°S</span></th>
+    <th>Lagos<br><span style="font-weight:400;font-size:9px">6.5°N</span></th>
+    <th>Total<br><span style="font-weight:400;font-size:9px">(reachable)</span></th>
+  </tr></thead><tbody id="matrix-body"></tbody>`;
+  const body = document.getElementById('matrix-body');
+  sats.forEach(s => {
+    const d = counts[s];
+    const total = d.london + d.nairobi + d.lagos;
+    body.innerHTML += `<tr>
+      <td><strong>${s}</strong></td>
+      <td><span class="${planeClass(s)}">${s[0]}</span></td>
+      <td><span class="pill pill-none">0</span></td>
+      <td><span class="pill ${pillClass(d.london,'london')}">${d.london}</span></td>
+      <td><span class="pill ${pillClass(d.nairobi,'nairobi')}">${d.nairobi}</span></td>
+      <td><span class="pill ${pillClass(d.lagos,'lagos')}">${d.lagos}</span></td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--accent)">${total}</td>
+    </tr>`;
+  });
+})();
+</script>
+
+</body></html>

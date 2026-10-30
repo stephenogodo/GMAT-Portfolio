@@ -1,0 +1,44 @@
+Target: B1
+
+Observer: Tromso
+There are no contact events in the time interval 01 Jan 2024 00:00:00.000 to 02 Jan 2024 00:00:00.000
+
+
+Number of events : 0
+
+
+Observer: London
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 03:13:50.139    01 Jan 2024 03:16:57.161      187.02188873    
+01 Jan 2024 04:46:58.701    01 Jan 2024 04:54:43.597      464.89590142    
+01 Jan 2024 06:22:45.478    01 Jan 2024 06:31:02.363      496.88508525    
+01 Jan 2024 07:59:02.682    01 Jan 2024 08:07:18.528      495.84588128    
+01 Jan 2024 09:35:22.744    01 Jan 2024 09:43:02.810      460.06610150    
+01 Jan 2024 11:13:21.612    01 Jan 2024 11:15:57.054      155.44179826    
+
+
+Number of events : 6
+
+
+Observer: Nairobi
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 00:00:00.000    01 Jan 2024 00:00:17.937      17.936678196    
+01 Jan 2024 09:52:09.092    01 Jan 2024 09:58:03.180      354.08802610    
+01 Jan 2024 11:27:53.301    01 Jan 2024 11:34:26.264      392.96349386    
+01 Jan 2024 21:24:10.837    01 Jan 2024 21:29:18.143      307.30662940    
+01 Jan 2024 22:59:13.072    01 Jan 2024 23:06:25.728      432.65687171    
+
+
+Number of events : 5
+
+
+Observer: Lagos
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 01:26:46.679    01 Jan 2024 01:34:55.104      488.42436683    
+01 Jan 2024 11:22:17.215    01 Jan 2024 11:25:59.695      222.48018282    
+01 Jan 2024 12:56:31.276    01 Jan 2024 13:04:03.520      452.24400741    
+
+
+Number of events : 3
+
+
