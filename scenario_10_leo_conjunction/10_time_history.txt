@@ -1,0 +1,22 @@
+LEOSat.UTCGregorian    LEOSat.ElapsedSecs     LEOSat.SMA             LEOSat.INC             LEOSat.RAAN            LEOSat.TA              LEOSat.Altitude        
+01 Jan 2024 00:00:00.000   0                      6928.1363              97.6                   45                     90                     571.020432             
+DebrisObject.UTCGregorian   DebrisObject.ElapsedSecs   DebrisObject.SMA       DebrisObject.INC       DebrisObject.RAAN      DebrisObject.TA        DebrisObject.Altitude   
+01 Jan 2024 00:00:00.000    0                          6928.1363              60                     45.000417              270                    566.0259145             
+LEOSat.UTCGregorian    LEOSat.ElapsedSecs     LEOSat.SMA             LEOSat.INC             LEOSat.RAAN            LEOSat.TA              LEOSat.Altitude        
+01 Jan 2024 00:23:54.750   1434.75                6946.957144            97.58903533            45.01660079            77.46150741            566.0657249            
+DebrisObject.UTCGregorian   DebrisObject.ElapsedSecs   DebrisObject.SMA       DebrisObject.INC       DebrisObject.RAAN      DebrisObject.TA        DebrisObject.Altitude   
+01 Jan 2024 00:23:54.750    1434.75                    6942.468797            60.03404851            44.93856101            52.62777811            558.8563414             
+LEOSat.UTCGregorian    LEOSat.ElapsedSecs     LEOSat.SMA             LEOSat.INC             LEOSat.RAAN            LEOSat.TA              LEOSat.Altitude        
+01 Jan 2024 00:00:00.000   0                      6924.485151            97.6                   45                     169.2667965            571.020432             
+LEOSat.UTCGregorian    LEOSat.ElapsedSecs     LEOSat.SMA             LEOSat.INC             LEOSat.RAAN            LEOSat.TA              LEOSat.Altitude        
+01 Jan 2024 00:23:54.750   1434.75                6943.296377            97.58902727            45.01661102            72.41875284            562.4181538            
+DebrisObject.UTCGregorian   DebrisObject.ElapsedSecs   DebrisObject.SMA       DebrisObject.INC       DebrisObject.RAAN      DebrisObject.TA        DebrisObject.Altitude   
+01 Jan 2024 00:23:54.750    1434.75                    6942.468797            60.03404851            44.93856101            52.6277781             558.8563414             
+LEOSat.UTCGregorian    LEOSat.ElapsedSecs     LEOSat.SMA             LEOSat.INC             LEOSat.RAAN            LEOSat.TA              LEOSat.Altitude        
+01 Jan 2024 01:59:33.740   7173.74                6943.14743             97.58807474            45.08244588            73.5395519             562.4047865            
+DebrisObject.UTCGregorian   DebrisObject.ElapsedSecs   DebrisObject.SMA       DebrisObject.INC       DebrisObject.RAAN      DebrisObject.TA        DebrisObject.Altitude   
+01 Jan 2024 01:59:33.740    7173.74                    6942.515654            60.03138569            44.69005983            52.75757642            558.9283289             
+LEOSat.UTCGregorian    LEOSat.ElapsedSecs     LEOSat.SMA             LEOSat.INC             LEOSat.RAAN            LEOSat.TA              LEOSat.Altitude        
+01 Jan 2024 03:35:12.730   12912.73               6943.063812            97.58792232            45.14793379            74.33556321            562.4114086            
+DebrisObject.UTCGregorian   DebrisObject.ElapsedSecs   DebrisObject.SMA       DebrisObject.INC       DebrisObject.RAAN      DebrisObject.TA        DebrisObject.Altitude   
+01 Jan 2024 03:35:12.730    12912.73                   6942.460563            60.03102292            44.44152013            53.03535278            558.9997198             

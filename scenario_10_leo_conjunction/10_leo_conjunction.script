@@ -1,0 +1,300 @@
+%
+% Scenario 10 - LEO Conjunction Analysis and Collision Avoidance Maneuver
+% Portfolio: GMAT-Astrodynamics-Portfolio (NigComSat Mission Studies)
+%
+% Description:
+%   Demonstrates conjunction detection and avoidance for a LEO satellite.
+%   A debris object (inc=60 deg) crosses the primary satellite's SSO track
+%   at ~550 km altitude with ~4.89 km/s relative velocity.
+%   The simulation propagates both objects to TCA, computes RIC miss distance,
+%   then applies a 2 m/s retrograde CAM and verifies safe passage.
+%
+% Orbital scenario:
+%   Primary (LEOSat): 550 km Sun-Synchronous Orbit, inc=97.6 deg
+%   Debris object:           550 km, inc=60 deg, RAAN offset = 0.000417 deg
+%   Geometry:                Primary at TA=90, Debris at TA=270 at epoch;
+%                            both cross u=0 intersection after T_p/4 = 1434.75 s
+%   TCA (nominal):           ~1434.75 s after epoch
+%   Miss distance:           ~50 m (cross-track dominant)
+%   Relative velocity:       ~4.89 km/s
+%   Pc (pre-CAM):            7.48e-04  -- ABOVE 1e-4 threshold: CAM required
+%   Pc (post-CAM):           ~0         -- Safe passage confirmed
+%
+% Python pre-computation: 10_leo_conjunction_precompute.py
+% Author: Stephen Ogodo
+% Date:   2024-Jan-01
+% GMAT version: R2022a
+%
+
+%----------------------------------------
+% Spacecraft
+%----------------------------------------
+
+Create Spacecraft LEOSat;
+GMAT LEOSat.DateFormat        = UTCGregorian;
+GMAT LEOSat.Epoch             = '01 Jan 2024 00:00:00.000';
+GMAT LEOSat.CoordinateSystem  = EarthMJ2000Eq;
+GMAT LEOSat.DisplayStateType  = Keplerian;
+
+GMAT LEOSat.SMA               = 6928.1363;
+GMAT LEOSat.ECC               = 0.0001;
+GMAT LEOSat.INC               = 97.6000;
+GMAT LEOSat.RAAN              = 45.0000;
+GMAT LEOSat.AOP               = 0.0000;
+GMAT LEOSat.TA                = 90.0000;
+
+GMAT LEOSat.DryMass           = 850;
+GMAT LEOSat.Cd                = 2.2;
+GMAT LEOSat.Cr                = 1.8;
+GMAT LEOSat.DragArea          = 15.0;
+GMAT LEOSat.SRPArea           = 15.0;
+GMAT LEOSat.NAIFId            = -10001001;
+GMAT LEOSat.NAIFIdReferenceFrame = -9001001;
+GMAT LEOSat.OrbitColor        = Red;
+GMAT LEOSat.TargetColor       = Teal;
+
+Create Spacecraft DebrisObject;
+GMAT DebrisObject.DateFormat         = UTCGregorian;
+GMAT DebrisObject.Epoch              = '01 Jan 2024 00:00:00.000';
+GMAT DebrisObject.CoordinateSystem   = EarthMJ2000Eq;
+GMAT DebrisObject.DisplayStateType   = Keplerian;
+
+GMAT DebrisObject.SMA                = 6928.1363;
+GMAT DebrisObject.ECC                = 0.0001;
+GMAT DebrisObject.INC                = 60.0000;
+GMAT DebrisObject.RAAN               = 45.000417;
+GMAT DebrisObject.AOP                = 0.0000;
+GMAT DebrisObject.TA                 = 270.0000;
+
+GMAT DebrisObject.DryMass            = 10;
+GMAT DebrisObject.Cd                 = 2.5;
+GMAT DebrisObject.Cr                 = 1.4;
+GMAT DebrisObject.DragArea           = 0.3;
+GMAT DebrisObject.SRPArea            = 0.3;
+GMAT DebrisObject.NAIFId             = -10001002;
+GMAT DebrisObject.NAIFIdReferenceFrame = -9001002;
+GMAT DebrisObject.OrbitColor         = Blue;
+GMAT DebrisObject.TargetColor        = DimGray;
+
+%----------------------------------------
+% Propagators
+%----------------------------------------
+
+Create ForceModel LEOProp_ForceModel;
+GMAT LEOProp_ForceModel.CentralBody            = Earth;
+GMAT LEOProp_ForceModel.PrimaryBodies          = {Earth};
+GMAT LEOProp_ForceModel.Gravity.Earth.Model    = JGM2;
+GMAT LEOProp_ForceModel.Gravity.Earth.Degree   = 8;
+GMAT LEOProp_ForceModel.Gravity.Earth.Order    = 8;
+GMAT LEOProp_ForceModel.Drag                   = JacchiaRoberts;
+GMAT LEOProp_ForceModel.Drag.AtmosphereModel   = JacchiaRoberts;
+GMAT LEOProp_ForceModel.PointMasses            = {};
+GMAT LEOProp_ForceModel.RelativisticCorrection = Off;
+GMAT LEOProp_ForceModel.SRP                    = On;
+GMAT LEOProp_ForceModel.SRP.Flux               = 1367;
+GMAT LEOProp_ForceModel.SRP.Nominal_Sun        = 149597870.691;
+
+Create Propagator LEOProp;
+GMAT LEOProp.FM                       = LEOProp_ForceModel;
+GMAT LEOProp.Type                     = RungeKutta89;
+GMAT LEOProp.InitialStepSize          = 30;
+GMAT LEOProp.Accuracy                 = 9.999999999999999e-012;
+GMAT LEOProp.MinStep                  = 0.001;
+GMAT LEOProp.MaxStep                  = 30;
+GMAT LEOProp.MaxStepAttempts          = 50;
+GMAT LEOProp.StopIfAccuracyIsViolated = true;
+
+%----------------------------------------
+% Impulsive Burn - CAM
+%----------------------------------------
+
+Create ImpulsiveBurn CAM;
+GMAT CAM.CoordinateSystem  = Local;
+GMAT CAM.Origin            = Earth;
+GMAT CAM.Axes              = VNB;
+GMAT CAM.Element1          = -0.002000;
+GMAT CAM.Element2          = 0.0;
+GMAT CAM.Element3          = 0.0;
+
+%----------------------------------------
+% Coordinate Systems
+%----------------------------------------
+
+Create CoordinateSystem LEOSat_RIC;
+GMAT LEOSat_RIC.Origin    = LEOSat;
+GMAT LEOSat_RIC.Axes      = ObjectReferenced;
+GMAT LEOSat_RIC.XAxis     = R;
+GMAT LEOSat_RIC.YAxis     = N;
+GMAT LEOSat_RIC.Primary   = Earth;
+GMAT LEOSat_RIC.Secondary = LEOSat;
+
+%----------------------------------------
+% Report Files
+%----------------------------------------
+
+Create ReportFile ConjunctionReport;
+GMAT ConjunctionReport.Filename       = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_10_leo_conjunction\10_conjunction_report.txt';
+GMAT ConjunctionReport.Precision      = 10;
+GMAT ConjunctionReport.WriteHeaders   = true;
+GMAT ConjunctionReport.ColumnWidth    = 20;
+GMAT ConjunctionReport.WriteReport    = true;
+
+Create ReportFile TimeHistory;
+GMAT TimeHistory.Filename             = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_10_leo_conjunction\10_time_history.txt';
+GMAT TimeHistory.Precision            = 10;
+GMAT TimeHistory.WriteHeaders         = true;
+GMAT TimeHistory.ColumnWidth          = 20;
+GMAT TimeHistory.WriteReport          = true;
+
+%----------------------------------------
+% 3D Graphics
+%----------------------------------------
+
+Create OrbitView OrbitView3D;
+GMAT OrbitView3D.SolverIterations     = Current;
+GMAT OrbitView3D.UpperLeft            = [ 0 0 ];
+GMAT OrbitView3D.Size                 = [ 0.5 0.85 ];
+GMAT OrbitView3D.RelativeZOrder       = 200;
+GMAT OrbitView3D.Maximized            = false;
+GMAT OrbitView3D.Add                  = {LEOSat, DebrisObject, Earth};
+GMAT OrbitView3D.CoordinateSystem     = EarthMJ2000Eq;
+GMAT OrbitView3D.DrawObject           = [ true true true ];
+GMAT OrbitView3D.DataCollectFrequency = 1;
+GMAT OrbitView3D.UpdatePlotFrequency  = 50;
+GMAT OrbitView3D.NumPointsToRedraw    = 0;
+GMAT OrbitView3D.ShowPlot             = true;
+GMAT OrbitView3D.MaxPlotPoints        = 20000;
+GMAT OrbitView3D.ShowLabels           = true;
+GMAT OrbitView3D.ViewPointReference   = Earth;
+GMAT OrbitView3D.ViewPointVector      = [ 30000 0 0 ];
+GMAT OrbitView3D.ViewDirection        = Earth;
+GMAT OrbitView3D.ViewScaleFactor      = 1;
+GMAT OrbitView3D.ViewUpCoordinateSystem = EarthMJ2000Eq;
+GMAT OrbitView3D.ViewUpAxis           = Z;
+GMAT OrbitView3D.EclipticPlane        = Off;
+GMAT OrbitView3D.XYPlane              = On;
+GMAT OrbitView3D.WireFrame            = Off;
+GMAT OrbitView3D.Axes                 = On;
+GMAT OrbitView3D.Grid                 = Off;
+GMAT OrbitView3D.SunLine              = Off;
+GMAT OrbitView3D.UseInitialView       = On;
+GMAT OrbitView3D.StarCount            = 7000;
+GMAT OrbitView3D.EnableStars          = On;
+GMAT OrbitView3D.EnableConstellations = Off;
+
+%----------------------------------------
+% Ground Track
+%----------------------------------------
+
+Create GroundTrackPlot GroundTrack;
+GMAT GroundTrack.SolverIterations     = Current;
+GMAT GroundTrack.UpperLeft            = [ 0.5 0 ];
+GMAT GroundTrack.Size                 = [ 0.5 0.85 ];
+GMAT GroundTrack.RelativeZOrder       = 100;
+GMAT GroundTrack.Maximized            = false;
+GMAT GroundTrack.Add                  = {LEOSat, DebrisObject};
+GMAT GroundTrack.DataCollectFrequency = 1;
+GMAT GroundTrack.UpdatePlotFrequency  = 50;
+GMAT GroundTrack.NumPointsToRedraw    = 0;
+GMAT GroundTrack.ShowPlot             = true;
+
+%========================================
+% MISSION SEQUENCE
+%========================================
+
+BeginMissionSequence;
+
+% -------------------------------------------------------
+% PHASE 0: Report initial state (pre-CAM nominal trajectory)
+% -------------------------------------------------------
+
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.RAAN LEOSat.AOP LEOSat.TA;
+Report ConjunctionReport DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.ECC DebrisObject.INC DebrisObject.RAAN DebrisObject.AOP DebrisObject.TA;
+
+Report TimeHistory LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report TimeHistory DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;
+
+% -------------------------------------------------------
+% PHASE 1: Nominal trajectory -- propagate to TCA without CAM
+% -------------------------------------------------------
+
+Propagate LEOProp(LEOSat, DebrisObject) {LEOSat.ElapsedSecs = 1434.75};
+
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.RAAN LEOSat.AOP LEOSat.TA LEOSat.Altitude;
+Report ConjunctionReport DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.ECC DebrisObject.INC DebrisObject.RAAN DebrisObject.AOP DebrisObject.TA DebrisObject.Altitude;
+
+Report ConjunctionReport LEOSat.X LEOSat.Y LEOSat.Z LEOSat.VX LEOSat.VY LEOSat.VZ;
+Report ConjunctionReport DebrisObject.X DebrisObject.Y DebrisObject.Z DebrisObject.VX DebrisObject.VY DebrisObject.VZ;
+
+Report ConjunctionReport DebrisObject.LEOSat_RIC.X DebrisObject.LEOSat_RIC.Y DebrisObject.LEOSat_RIC.Z;
+
+Report TimeHistory LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report TimeHistory DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;
+
+% -------------------------------------------------------
+% PHASE 2: Reset to epoch -- prepare for CAM run
+% -------------------------------------------------------
+
+GMAT LEOSat.Epoch  = '01 Jan 2024 00:00:00.000';
+GMAT LEOSat.SMA    = 6928.1363;
+GMAT LEOSat.ECC    = 0.0001;
+GMAT LEOSat.INC    = 97.6000;
+GMAT LEOSat.RAAN   = 45.0000;
+GMAT LEOSat.AOP    = 0.0000;
+GMAT LEOSat.TA     = 90.0000;
+
+GMAT DebrisObject.Epoch   = '01 Jan 2024 00:00:00.000';
+GMAT DebrisObject.SMA     = 6928.1363;
+GMAT DebrisObject.ECC     = 0.0001;
+GMAT DebrisObject.INC     = 60.0000;
+GMAT DebrisObject.RAAN    = 45.000417;
+GMAT DebrisObject.AOP     = 0.0000;
+GMAT DebrisObject.TA      = 270.0000;
+
+% -------------------------------------------------------
+% PHASE 3: Apply CAM (2 m/s retrograde at epoch)
+%   CAM dV = -0.002 km/s in VNB (retrograde)
+%   Lowers SMA -> builds in-track separation -> safe passage at TCA
+% -------------------------------------------------------
+
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.RAAN LEOSat.AOP LEOSat.TA;
+
+Maneuver CAM(LEOSat);
+
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.RAAN LEOSat.AOP LEOSat.TA;
+Report TimeHistory LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+
+% -------------------------------------------------------
+% PHASE 4: Propagate post-CAM to TCA time
+% -------------------------------------------------------
+
+Propagate LEOProp(LEOSat, DebrisObject) {LEOSat.ElapsedSecs = 1434.75};
+
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.ECC LEOSat.INC LEOSat.RAAN LEOSat.AOP LEOSat.TA LEOSat.Altitude;
+Report ConjunctionReport DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.ECC DebrisObject.INC DebrisObject.RAAN DebrisObject.AOP DebrisObject.TA DebrisObject.Altitude;
+
+Report ConjunctionReport LEOSat.X LEOSat.Y LEOSat.Z LEOSat.VX LEOSat.VY LEOSat.VZ;
+Report ConjunctionReport DebrisObject.X DebrisObject.Y DebrisObject.Z DebrisObject.VX DebrisObject.VY DebrisObject.VZ;
+
+Report ConjunctionReport DebrisObject.LEOSat_RIC.X DebrisObject.LEOSat_RIC.Y DebrisObject.LEOSat_RIC.Z;
+
+Report TimeHistory LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report TimeHistory DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;
+
+% -------------------------------------------------------
+% PHASE 5: Coast 2 more orbits post-TCA
+% -------------------------------------------------------
+
+Propagate LEOProp(LEOSat, DebrisObject) {LEOSat.ElapsedSecs = 5738.99};
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report ConjunctionReport DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;
+Report ConjunctionReport DebrisObject.LEOSat_RIC.X DebrisObject.LEOSat_RIC.Y DebrisObject.LEOSat_RIC.Z;
+Report TimeHistory LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report TimeHistory DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;
+
+Propagate LEOProp(LEOSat, DebrisObject) {LEOSat.ElapsedSecs = 5738.99};
+Report ConjunctionReport LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report ConjunctionReport DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;
+Report ConjunctionReport DebrisObject.LEOSat_RIC.X DebrisObject.LEOSat_RIC.Y DebrisObject.LEOSat_RIC.Z;
+Report TimeHistory LEOSat.UTCGregorian LEOSat.ElapsedSecs LEOSat.SMA LEOSat.INC LEOSat.RAAN LEOSat.TA LEOSat.Altitude;
+Report TimeHistory DebrisObject.UTCGregorian DebrisObject.ElapsedSecs DebrisObject.SMA DebrisObject.INC DebrisObject.RAAN DebrisObject.TA DebrisObject.Altitude;

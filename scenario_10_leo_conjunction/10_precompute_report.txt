@@ -1,0 +1,76 @@
+======================================================================
+Scenario 10 - LEO Conjunction Analysis & CAM Pre-computation
+======================================================================
+
+--- Orbit Parameters ---
+  SMA        = 6928.1370 km
+  Altitude   = 550.0 km
+  V_circ     = 7.5851 km/s
+  T_period   = 5738.993 s  (95.65 min)
+
+--- Conjunction Geometry ---
+  Primary inc     = 97.6 deg  (SSO)
+  Debris inc      = 60.0 deg
+  Delta_inc       = 37.6 deg
+  RAAN_primary    = 45.000000 deg
+  RAAN_debris     = 45.000417 deg
+  Delta_RAAN      = 0.000417 deg
+  TCA time        = 1434.748 s  (T_p/4)
+
+--- Relative Velocity at Crossing ---
+  |V_p| = |V_d|  = 7.5851 km/s
+  V_rel          = 4.8888 km/s
+
+--- Miss Distance ---
+  delta_RAAN     = 0.000417 deg  = 0.00000728 rad
+  d_miss         = 50.42 m  (0.050423 km)
+
+--- Probability of Collision (Foster 2D method) ---
+  R_primary  = 5.0 m
+  R_debris   = 0.1 m
+  R_HB       = 5.1 m
+  A_HB       = 81.7128 m^2
+  sigma_p    = 50.0 m
+  sigma_d    = 50.0 m
+  sigma_comb = 70.7107 m
+  d_miss     = 50.42 m
+  Pc         = 2.0171e-03
+  Threshold  = 1.0e-04
+  RESULT: Pc > threshold -- CAM WARRANTED
+
+--- CAM Parameters ---
+  Burn magnitude  = 2.0 m/s  (retrograde at epoch)
+  Coast time      = 1434.75 s  (to TCA)
+  Delta_SMA       = 3.6536 km  (retrograde lowers SMA)
+  Mean motion n   = 1.094824 mrad/s
+  In-track sep    = 8608.5 m  at TCA
+  In-track sep    = 8.6085 km  at TCA
+
+--- Post-CAM Assessment ---
+  Cross-track miss   = 50.4 m  (unchanged)
+  In-track sep added = 8608.5 m
+  Total miss dist    = 8608.6 m
+  Post-CAM Pc        = 0.0000e+00
+  Threshold          = 1.0e-04
+  RESULT: Pc << threshold -- SAFE PASSAGE CONFIRMED
+
+======================================================================
+GMAT Script Parameters
+======================================================================
+  LEOSat.SMA   = 6928.1370
+  LEOSat.ECC   = 0.0001
+  LEOSat.INC   = 97.6000
+  LEOSat.RAAN  = 45.0000
+  LEOSat.AOP   = 0.0000
+  LEOSat.TA    = 90.0000
+
+  DebrisObject.SMA    = 6928.1370
+  DebrisObject.ECC    = 0.0001
+  DebrisObject.INC    = 60.0000
+  DebrisObject.RAAN   = 45.000417
+  DebrisObject.AOP    = 0.0000
+  DebrisObject.TA     = 270.0000
+
+  TCA ElapsedSecs     = 1434.75  (T_p/4)
+  CAM.Element1        = -0.002000  (retrograde VNB)
+======================================================================
