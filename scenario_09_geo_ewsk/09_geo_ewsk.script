@@ -1,0 +1,212 @@
+%----------------------------------------
+%  09b_geo_ewsk.script
+%
+%  NigComSat-1R @ 42.5 degE -- GEO East-West Station-Keeping
+%  Scenario 09b: Full Two-Burn Operational Cycle
+%
+%  BUILDS DIRECTLY ON Scenario 09a v17 (identical spacecraft,
+%  force model, propagator, thruster, burn duration).
+%
+%  BURN 2 EPOCH -- SCIENTIFIC DERIVATION (from 09b report data):
+%    After Burn 1 at day 1.5, 24-hr mean longitude profile:
+%      Day 9.0 : 42.4874 degE  (westward arc bottom)
+%      Day 13.0: 42.5006 degE  (recovering through slot centre)
+%      Day 16.0: 42.5286 degE  (approaching east trigger)
+%      Day 16.5: 42.5350 degE  <-- FIRST CROSSING OF 42.53 EAST TRIGGER
+%      Day 17.5: 42.5487 degE  (approaching 42.55 hard limit)
+%    Burn 2 fires at the first crossing of the 42.53 degE east trigger
+%    on the RETURN arc -- day 16.5 from epoch = 15.0 days after Burn 1.
+%    This is operationally correct: we burn when mean longitude reaches
+%    the east trigger, not on a fixed timer.
+%
+%  TIMELINE:
+%    Day 0.0  : Epoch at 42.50 degE
+%    Day 1.5  : Burn 1 (11s prograde) -- east trigger 42.53 degE
+%    Day 1.5-16.5: Westward arc -- bottom ~day 9 at 42.487 degE mean,
+%                  recovering eastward to 42.53 degE by day 16.5
+%    Day 16.5 : Burn 2 (7s prograde) -- east trigger 42.53 degE
+%                 (pre-burn SMA already 1 km above sync; shorter burn
+%                 targets same post-burn SMA as Burn 1: 42167.2 km)
+%    Day 16.5-33.5: Observe second westward arc
+%                 (cut-off at east trigger -- where Burn 3 would fire)
+%
+%  DEADBAND: 42.45 degE to 42.55 degE (+/-0.05 deg)
+%  EAST TRIGGER: 42.53 degE  WEST TRIGGER: 42.47 degE
+%  EWSK CYCLE LENGTH: ~15 days (consistent with NigComSat operations)
+%  NOTE: Burn durations are NOT identical -- Burn 2 is 7s because
+%  pre-burn SMA is already elevated by tesseral forcing during coast.
+%  Each burn targets the same post-burn SMA (42167.2 km), not the same
+%  delta-SMA. This is the correct operational approach.
+%
+%  ASCII-ONLY: No Unicode, no degree signs, no +/- symbols anywhere.
+%  Author: Stephen O. Ogodo
+%  Tool:   GMAT R2022a
+%----------------------------------------
+
+%--- Force Model (identical to 09a v17) ---
+Create ForceModel GEO_FM;
+GMAT GEO_FM.CentralBody = Earth;
+GMAT GEO_FM.PrimaryBodies = {Earth};
+GMAT GEO_FM.GravityField.Earth.Degree = 4;
+GMAT GEO_FM.GravityField.Earth.Order  = 4;
+GMAT GEO_FM.GravityField.Earth.PotentialFile = 'JGM2.cof';
+GMAT GEO_FM.SRP = On;
+GMAT GEO_FM.Drag = None;
+GMAT GEO_FM.RelativisticCorrection = Off;
+
+%--- Propagator (identical to 09a v17) ---
+Create Propagator GEOProp;
+GMAT GEOProp.FM = GEO_FM;
+GMAT GEOProp.Type = RungeKutta89;
+GMAT GEOProp.InitialStepSize = 60;
+GMAT GEOProp.Accuracy = 1e-13;
+GMAT GEOProp.MinStep = 0.001;
+GMAT GEOProp.MaxStep = 86400;
+GMAT GEOProp.MaxStepAttempts = 50;
+
+%--- Spacecraft (NEVER CHANGE -- identical to 09a v17) ---
+Create Spacecraft SC;
+GMAT SC.DateFormat  = UTCGregorian;
+GMAT SC.Epoch       = '01 Jan 2024 00:00:00.000';
+GMAT SC.CoordinateSystem = EarthMJ2000Eq;
+GMAT SC.DisplayStateType = Keplerian;
+GMAT SC.SMA  = 42164.1696;
+GMAT SC.ECC  = 0.0001;
+GMAT SC.INC  = 0.05;
+GMAT SC.RAAN = 0.0;
+GMAT SC.AOP  = 0.0;
+GMAT SC.TA   = 142.3452;
+GMAT SC.DryMass = 1000.0;
+GMAT SC.Cd = 2.2;
+GMAT SC.Cr = 1.8;
+GMAT SC.DragArea = 20.0;
+GMAT SC.SRPArea  = 50.0;
+
+%--- Fuel Tank (identical to 09a v17) ---
+Create ChemicalTank FuelTank;
+GMAT FuelTank.AllowNegativeFuelMass = false;
+GMAT FuelTank.FuelMass = 800.0;
+GMAT FuelTank.Volume = 0.85;
+GMAT FuelTank.FuelDensity = 1000;
+GMAT FuelTank.PressureModel = PressureRegulated;
+GMAT SC.Tanks = {FuelTank};
+
+%--- Thruster (identical to 09a v17) ---
+Create ChemicalThruster Thruster1;
+GMAT Thruster1.CoordinateSystem = Local;
+GMAT Thruster1.Origin = Earth;
+GMAT Thruster1.Axes = VNB;
+GMAT Thruster1.ThrustDirection1 = 1.0;
+GMAT Thruster1.ThrustDirection2 = 0.0;
+GMAT Thruster1.ThrustDirection3 = 0.0;
+GMAT Thruster1.DecrementMass = true;
+GMAT Thruster1.Tank = {FuelTank};
+GMAT Thruster1.C1 = 20.0;
+GMAT Thruster1.K1 = 220.0;
+GMAT SC.Thrusters = {Thruster1};
+
+%--- Finite Burns ---
+Create FiniteBurn FinBurn1;
+GMAT FinBurn1.Thrusters = {Thruster1};
+
+Create FiniteBurn FinBurn2;
+GMAT FinBurn2.Thrusters = {Thruster1};
+
+%--- Report File ---
+Create ReportFile EWSKReport;
+GMAT EWSKReport.SolverIterations = Current;
+GMAT EWSKReport.UpperLeft = [0.0 0.0];
+GMAT EWSKReport.Size = [0.0 0.0];
+GMAT EWSKReport.RelativeZOrder = 0;
+GMAT EWSKReport.Maximized = false;
+GMAT EWSKReport.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_08b_geo_ewsk\09b_geo_ewsk_report.txt';
+GMAT EWSKReport.Precision = 6;
+GMAT EWSKReport.Add = {SC.UTCGregorian, SC.Earth.Longitude, SC.ECC, SC.SMA, SC.TotalMass, SC.FuelTank.FuelMass};
+GMAT EWSKReport.WriteHeaders = true;
+GMAT EWSKReport.LeftJustify = On;
+GMAT EWSKReport.ZeroFill = Off;
+GMAT EWSKReport.ColumnWidth = 24;
+GMAT EWSKReport.WriteReport = true;
+
+%--- XY Plot ---
+Create XYPlot EWSKPlot;
+GMAT EWSKPlot.SolverIterations = Current;
+GMAT EWSKPlot.UpperLeft        = [0.01 0.01];
+GMAT EWSKPlot.Size             = [0.70 0.45];
+GMAT EWSKPlot.RelativeZOrder   = 500;
+GMAT EWSKPlot.Maximized        = false;
+GMAT EWSKPlot.XVariable        = SC.ElapsedDays;
+GMAT EWSKPlot.YVariables       = {SC.Earth.Longitude};
+GMAT EWSKPlot.ShowPlot         = true;
+
+BeginMissionSequence;
+
+%--- Epoch state snapshot ---
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- PHASE 0: Coast 1.5 days to east trigger ---
+%    Tesseral drift carries mean lon eastward from 42.50 to 42.53 degE
+Propagate GEOProp(SC) {SC.ElapsedDays = 1.5};
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- BURN 1: 11s prograde at day 1.5 (east trigger 42.53 degE mean lon) ---
+BeginFiniteBurn FinBurn1(SC);
+Propagate GEOProp(SC) {SC.ElapsedSecs = 11};
+EndFiniteBurn FinBurn1(SC);
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- PHASE 1: Coast 15.0 days ---
+%    DERIVATION: From the 09b report, 24-hr mean longitude after Burn 1:
+%      Arc bottom: day 9.0 at 42.4874 degE (well inside west trigger)
+%      East trigger re-crossing: day 16.5 -- mean lon = 42.535 degE
+%    15.0 days of ElapsedDays coast (from Burn 1 at day 1.5) = day 16.5
+%    This is the first moment the 24-hr mean longitude crosses back
+%    through 42.53 degE on the eastward recovery arc.
+%    Operational principle: burn when compliance demands it (east trigger
+%    reached), not on a fixed calendar timer.
+Propagate GEOProp(SC) {SC.ElapsedDays = 15.0};
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- BURN 2: 7s prograde at day 16.5 (east trigger 42.53 degE mean lon) ---
+%
+%    GENERALISED BURN DURATION FORMULA:
+%      T_burn [s] = (SMA_target - SMA_pre) / (dSMA/dt_burn)
+%
+%    PHYSICAL CONSTANTS (derived from Burn 1 -- the reference burn):
+%      Burn rate: dSMA/dt_burn = 3.4 km / 11 s = 0.309 km/s
+%      SMA_target = 42167.2 km (= sync + 3.03 km -- the post-Burn 1 SMA that
+%                  produces the correct ~15-day westward arc within deadband)
+%
+%    PRE-BURN 2 SMA STATE (from 09b report data):
+%      After Burn 1, SMA = 42167.2 km (3.03 km above synchronous 42164.17 km)
+%      During the 15-day westward coast, SMA decays toward synchronous:
+%        the satellite is above sync, so period > sidereal day -> westward drift.
+%        Tesseral harmonics at 42.5 degE pull SMA back toward sync as satellite drifts.
+%        Observed decay rate: -0.133 km/day (-2.0 km over 15 days)
+%      SMA_pre (Burn 2) = 42167.2 - 2.0 = 42165.2 km (still 1.03 km above sync,
+%        i.e., satellite still drifting westward at Burn 2 firing)
+%
+%    BURN 2 DURATION:
+%      Delta SMA needed = SMA_target - SMA_pre = 42167.2 - 42165.2 = 2.0 km
+%      T_burn = 2.0 km / 0.309 km/s = 6.47 s -> rounded UP to 7 s
+%      (round UP: overshoot extends arc; undershoot risks premature east reversal)
+%      7 s gives SMA_post = 42167.36 km (overshoot 0.16 km -- within tolerance)
+%
+%    An 11s Burn 2 would give SMA 42168.6 km (+4.4 km above sync)
+%    -- that is what caused the previous westward runaway violation.
+BeginFiniteBurn FinBurn2(SC);
+Propagate GEOProp(SC) {SC.ElapsedSecs = 7};
+EndFiniteBurn FinBurn2(SC);
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
+%--- PHASE 2: Observe second westward arc -- 17.0 days ---
+%    Second arc mirrors Phase 1: bottom ~day 25 at 42.472 degE,
+%    recovering eastward. Mean lon crosses 42.53 degE east trigger
+%    at day 33.5 (from 09b report data) -- where Burn 3 would fire
+%    in a continuing operational cycle.
+%    Phase 2 = 17.0 days: day 16.5 + 17.0 = day 33.5 cut-off.
+%    Beyond day 33.5 mean lon approaches 42.55 hard limit (violation
+%    at day 34.75), so scenario ends at the east trigger.
+Propagate GEOProp(SC) {SC.ElapsedDays = 17.0};
+Report EWSKReport SC.UTCGregorian SC.Earth.Longitude SC.ECC SC.SMA SC.TotalMass SC.FuelTank.FuelMass;
+
