@@ -9,7 +9,7 @@ Each scenario demonstrates a distinct flight-dynamics engineering skill relevant
 
 ## Background
 
-This portfolio was developed independently to translate 15+ years of GEO satellite operations experience at NigComSat into demonstrable LEO flight-dynamics capability. Scenarios progress from single-satellite propagation through ISL geometry, ground-station scheduling, Walker constellation design, impulsive and finite manoeuvres, GEO station-keeping, and conjunction analysis with collision avoidance manoeuvre sizing.
+This portfolio was developed independently to translate 15+ years of GEO satellite operations experience at NigComSat into demonstrable LEO flight-dynamics capability. Scenarios progress from single-satellite propagation through ISL geometry, ground-station scheduling, Walker constellation design, impulsive and finite manoeuvres, GEO station-keeping, conjunction analysis with collision avoidance manoeuvre sizing, and multi-asset ground contact scheduling optimisation.
 
 All manoeuvre scenarios follow a **physics-first methodology**: delta-V and burn parameters are derived analytically in Python before any GMAT scripting, so GMAT serves as verification rather than the source of truth.
 
@@ -30,6 +30,7 @@ All manoeuvre scenarios follow a **physics-first methodology**: delta-V and burn
 | 08 | GEO East-West Station-Keeping (Single Arc) | GEO EWSK, tesseral drift, deadband control | [scenario_08_geo_ewsk](./scenario_08_geo_ewsk/) |
 | 09 | GEO East-West Station-Keeping (Full Duty Cycle) | Multi-cycle EWSK, XY phase-space plot, burn calibration | [scenario_09_geo_ewsk](./scenario_09_geo_ewsk/) |
 | 10 | LEO Conjunction Analysis and CAM Sizing | TCA, miss distance, Foster 2D Pc, CW CAM delta-V | [scenario_10_leo_conjunction](./scenario_10_leo_conjunction/) |
+| 11 | Contact Scheduling with Integer Linear Programming | ILP, multi-objective optimisation, ground station scheduling | [scenario_11_contact_scheduling_ilp](./scenario_11_contact_scheduling_ilp/) |
 
 ---
 
@@ -177,7 +178,38 @@ Simulates a close approach between two LEO satellites with near-identical orbits
 - Foster 2D Pc: 2.02e-3 (above 1e-3 threshold — CAM required)
 - CAM delta-V: 0.11 m/s in-track (CW formulation)
 
-**Physics insight:** The 50.2 m miss distance is set by the cross-track geometry floor d = a x delta_RAAN(rad) and cannot be reduced without changing RAAN. The conjunction is not a crossing of the orbits — it is two objects arriving near the same point in space at nearly the same time, on orbits that do not geometrically intersect.
+**Physics insight:** The 50.2 m miss distance is set by the cross-track geometry floor d = a × delta_RAAN(rad) and cannot be reduced without changing RAAN. The conjunction is not a crossing of the orbits — it is two objects arriving near the same point in space at nearly the same time, on orbits that do not geometrically intersect.
+
+---
+
+### Scenario 11 — Contact Scheduling with Integer Linear Programming (ILP)
+**Folder:** [`scenario_11_contact_scheduling_ilp/`](./scenario_11_contact_scheduling_ilp/)
+
+Optimally schedules ground contacts for all 24 satellites of the Walker 24/3/1 constellation from Scenario 06 using Integer Linear Programming (ILP). The problem is formulated as a multi-objective binary program: maximise total scheduled contact time across the fleet while simultaneously minimising the worst-case revisit gap (the longest gap between successive contacts) for any individual satellite. The two objectives are combined as a weighted sum and solved to proven optimality by the HiGHS MILP solver via PuLP 4.x.
+
+**ILP formulation:**
+- **Decision variables:** x_i ∈ {0, 1} — whether contact window i is scheduled (284 binary variables)
+- **Station exclusivity constraint:** x_i + x_j ≤ 1 for each conflict pair (i, j) — one antenna per station, no simultaneous contacts (5 conflict pairs)
+- **Gap linearisation (big-M, M = 86400 s):** 260 auxiliary continuous variables g_k track the active gap for each consecutive satellite pair; G_max tracks the fleet-wide maximum
+- **Objective (maximise):** α × Σ(duration_i × x_i) / 100 − β × G_max / 100, with α = 1.0 (contact weight) and β = 2.0 (gap penalty; β > α means gap minimisation is prioritised)
+
+| Metric | Value |
+|---|---|
+| Solver | HiGHS via PuLP 4.x |
+| Solver status | Optimal |
+| Windows scheduled | 259 / 284 |
+| Total contact time | 106,463.8 s (29.57 h) |
+| Worst-case revisit gap | 5,956.4 s (1.65 h) |
+| Mean contact per satellite | 4,436 s |
+| Min contact per satellite | 3,791 s |
+
+**Ground station utilisation:** London 14.65 h | Lagos 7.88 h | Nairobi 7.05 h
+
+**Key finding:** With β = 2α, the ILP trades a small reduction in total contact time against a significantly improved worst-case revisit gap relative to an unconstrained greedy schedule. The 25 unscheduled windows are all station-conflict casualties — windows whose time slots were contested by a higher-value assignment at the same antenna. Tromso is excluded from scheduling (0 passes, inclination blackout established in Scenario 06).
+
+**Two-step workflow:** Step 1 — run `11_ilp_contact_data.script` in GMAT to generate 24 contact window files into `output_sc11\`; Step 2 — run `11_ilp_contact_scheduler.py` to solve the ILP.
+
+**Outputs:** `schedule_output.txt` (chronological schedule + per-satellite summary), `11_ilp_summary.txt` (formulation detail + solver statistics), `11_schedule_gantt.png` (Gantt chart, coloured by station).
 
 ---
 
@@ -186,8 +218,9 @@ Simulates a close approach between two LEO satellites with near-identical orbits
 | Tool | Role |
 |---|---|
 | GMAT R2022a | Orbital propagation, manoeuvre planning, contact analysis, finite burn targeting |
-| Python 3 | Pre-computation of delta-V, drift rates, burn durations, plot generation |
+| Python 3 | Pre-computation of delta-V, drift rates, burn durations, ILP formulation, plot generation |
 | NumPy / SciPy | Numerical integration, orbital mechanics calculations |
+| PuLP 4.x / HiGHS | Integer Linear Programming — contact scheduling optimisation (Scenario 11) |
 | Git / GitHub | Version control and portfolio hosting |
 
 ---
@@ -211,7 +244,10 @@ GMAT_portfolio/
 ├── scenario_07_finite_burn_hohmann/
 ├── scenario_08_geo_ewsk/
 ├── scenario_09_geo_ewsk/
-└── scenario_10_leo_conjunction/
+├── scenario_10_leo_conjunction/
+└── scenario_11_contact_scheduling_ilp/
+    ├── 11_ilp_contact_data.script
+    └── output_sc11/      (24 contact window files generated by 11_ilp_contact_data.script)
 ```
 
 ---
@@ -220,7 +256,6 @@ GMAT_portfolio/
 
 | # | Scenario | Skill |
 |---|---|---|
-| 11 | Contact Scheduling with Integer Linear Programming (ILP) | Multi-asset ground station scheduling optimisation |
 | 12 | GEO EWSK with Prolonged Single Arc Burn | Extended finite burn EWSK, burn arc sizing |
 
 ---

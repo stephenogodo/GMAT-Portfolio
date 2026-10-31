@@ -1,0 +1,33 @@
+Target: A6
+
+Observer: London
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 00:57:41.450    01 Jan 2024 01:05:51.140      489.69024491    
+01 Jan 2024 02:34:26.879    01 Jan 2024 02:40:48.972      382.09255699    
+01 Jan 2024 19:16:59.290    01 Jan 2024 19:22:12.027      312.73711191    
+01 Jan 2024 20:51:18.169    01 Jan 2024 20:59:18.893      480.72400155    
+01 Jan 2024 22:27:24.460    01 Jan 2024 22:35:42.313      497.85336102    
+
+
+Number of events : 5
+
+
+Observer: Nairobi
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 02:49:42.519    01 Jan 2024 02:57:51.882      489.36227696    
+01 Jan 2024 14:22:16.029    01 Jan 2024 14:30:23.156      487.12649052    
+
+
+Number of events : 2
+
+
+Observer: Lagos
+Start Time (UTC)            Stop Time (UTC)               Duration (s)         
+01 Jan 2024 04:19:04.337    01 Jan 2024 04:27:00.684      476.34706674    
+01 Jan 2024 15:57:25.967    01 Jan 2024 16:00:33.158      187.19157575    
+01 Jan 2024 17:31:15.261    01 Jan 2024 17:38:59.511      464.25000275    
+
+
+Number of events : 3
+
+

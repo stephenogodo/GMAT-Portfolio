@@ -1,0 +1,659 @@
+%  ============================================================
+%  Scenario 11: ILP Contact Scheduling -- Data Generation Step
+%  Walker 24/3/1 Constellation -- Contact Window Export
+%
+%  Purpose:
+%    Generate the raw contact window data for all 24 satellites
+%    against the three active ground stations (London, Nairobi,
+%    Lagos). The 24 output files are the direct input to the
+%    ILP contact scheduler: 11_ilp_contact_scheduler.py
+%
+%  Constellation: Walker T/P/F = 24/3/1
+%    SMA  = 6778.14 km  (ISS-equivalent ~400 km altitude)
+%    INC  = 51.6 deg
+%    ECC  = 0.0001 (near-circular)
+%    Planes: A (RAAN=0), B (RAAN=120), C (RAAN=240)
+%    8 satellites per plane, 45-deg true anomaly spacing
+%    Phasing factor F=1 -> inter-plane TA offset = 15 deg
+%
+%  Ground Stations (active -- Tromso excluded: 69.7N inclination
+%  blackout, zero passes for 51.6-deg constellation):
+%    London   51.5 N,  -0.1 E,  5 deg elevation mask
+%    Nairobi  -1.3 N,  36.8 E,  5 deg elevation mask
+%    Lagos     6.5 N,   3.4 E,  5 deg elevation mask
+%
+%  Simulation epoch: 01 Jan 2024 00:00:00.000 UTC
+%  Duration: 1 day (86400 s)
+%
+%  Outputs: output_sc11\Contact_[A-C][1-8].txt  (24 files)
+%
+%  Workflow:
+%    Step 1 -- Run this script in GMAT to produce output_sc11\
+%    Step 2 -- Run 11_ilp_contact_scheduler.py (reads output_sc11\)
+%              to solve the multi-objective ILP and produce:
+%                schedule_output.txt
+%                11_ilp_summary.txt
+%                11_schedule_gantt.png
+%
+%  ILP objective (Python step):
+%    Maximise: alpha * total_contact - beta * G_max
+%    alpha = 1.0 (contact weight), beta = 2.0 (gap weight)
+%    Solver: HiGHS via PuLP 4.x
+%  ============================================================
+
+%  ---- Force Model ----
+Create ForceModel DefaultProp_FM;
+GMAT DefaultProp_FM.CentralBody = Earth;
+GMAT DefaultProp_FM.PrimaryBodies = {Earth};
+GMAT DefaultProp_FM.GravityField.Earth.Degree = 4;
+GMAT DefaultProp_FM.GravityField.Earth.Order = 4;
+GMAT DefaultProp_FM.GravityField.Earth.Model = JGM2;
+GMAT DefaultProp_FM.Drag.AtmosphereModel = None;
+GMAT DefaultProp_FM.SRP = Off;
+
+%  ---- Propagator ----
+Create Propagator DefaultProp;
+GMAT DefaultProp.FM = DefaultProp_FM;
+GMAT DefaultProp.Type = RungeKutta89;
+GMAT DefaultProp.InitialStepSize = 60;
+GMAT DefaultProp.MinStep = 0.001;
+GMAT DefaultProp.MaxStep = 2700;
+
+%  ================================================================
+%  SATELLITES
+%  ================================================================
+
+%  ---- Plane A (RAAN = 0 deg) ----
+%  Inter-plane phasing F=1: plane A TA offset = 0 * 15 = 0 deg
+
+Create Spacecraft A1;
+GMAT A1.DateFormat = UTCGregorian;
+GMAT A1.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A1.CoordinateSystem = EarthMJ2000Eq;
+GMAT A1.DisplayStateType = Keplerian;
+GMAT A1.SMA = 6778.14;
+GMAT A1.ECC = 0.0001;
+GMAT A1.INC = 51.6;
+GMAT A1.RAAN = 0;
+GMAT A1.AOP = 0;
+GMAT A1.TA = 0;
+
+Create Spacecraft A2;
+GMAT A2.DateFormat = UTCGregorian;
+GMAT A2.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A2.CoordinateSystem = EarthMJ2000Eq;
+GMAT A2.DisplayStateType = Keplerian;
+GMAT A2.SMA = 6778.14;
+GMAT A2.ECC = 0.0001;
+GMAT A2.INC = 51.6;
+GMAT A2.RAAN = 0;
+GMAT A2.AOP = 0;
+GMAT A2.TA = 45;
+
+Create Spacecraft A3;
+GMAT A3.DateFormat = UTCGregorian;
+GMAT A3.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A3.CoordinateSystem = EarthMJ2000Eq;
+GMAT A3.DisplayStateType = Keplerian;
+GMAT A3.SMA = 6778.14;
+GMAT A3.ECC = 0.0001;
+GMAT A3.INC = 51.6;
+GMAT A3.RAAN = 0;
+GMAT A3.AOP = 0;
+GMAT A3.TA = 90;
+
+Create Spacecraft A4;
+GMAT A4.DateFormat = UTCGregorian;
+GMAT A4.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A4.CoordinateSystem = EarthMJ2000Eq;
+GMAT A4.DisplayStateType = Keplerian;
+GMAT A4.SMA = 6778.14;
+GMAT A4.ECC = 0.0001;
+GMAT A4.INC = 51.6;
+GMAT A4.RAAN = 0;
+GMAT A4.AOP = 0;
+GMAT A4.TA = 135;
+
+Create Spacecraft A5;
+GMAT A5.DateFormat = UTCGregorian;
+GMAT A5.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A5.CoordinateSystem = EarthMJ2000Eq;
+GMAT A5.DisplayStateType = Keplerian;
+GMAT A5.SMA = 6778.14;
+GMAT A5.ECC = 0.0001;
+GMAT A5.INC = 51.6;
+GMAT A5.RAAN = 0;
+GMAT A5.AOP = 0;
+GMAT A5.TA = 180;
+
+Create Spacecraft A6;
+GMAT A6.DateFormat = UTCGregorian;
+GMAT A6.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A6.CoordinateSystem = EarthMJ2000Eq;
+GMAT A6.DisplayStateType = Keplerian;
+GMAT A6.SMA = 6778.14;
+GMAT A6.ECC = 0.0001;
+GMAT A6.INC = 51.6;
+GMAT A6.RAAN = 0;
+GMAT A6.AOP = 0;
+GMAT A6.TA = 225;
+
+Create Spacecraft A7;
+GMAT A7.DateFormat = UTCGregorian;
+GMAT A7.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A7.CoordinateSystem = EarthMJ2000Eq;
+GMAT A7.DisplayStateType = Keplerian;
+GMAT A7.SMA = 6778.14;
+GMAT A7.ECC = 0.0001;
+GMAT A7.INC = 51.6;
+GMAT A7.RAAN = 0;
+GMAT A7.AOP = 0;
+GMAT A7.TA = 270;
+
+Create Spacecraft A8;
+GMAT A8.DateFormat = UTCGregorian;
+GMAT A8.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT A8.CoordinateSystem = EarthMJ2000Eq;
+GMAT A8.DisplayStateType = Keplerian;
+GMAT A8.SMA = 6778.14;
+GMAT A8.ECC = 0.0001;
+GMAT A8.INC = 51.6;
+GMAT A8.RAAN = 0;
+GMAT A8.AOP = 0;
+GMAT A8.TA = 315;
+
+%  ---- Plane B (RAAN = 120 deg) ----
+%  Inter-plane phasing F=1: plane B TA offset = 1 * 15 = 15 deg
+
+Create Spacecraft B1;
+GMAT B1.DateFormat = UTCGregorian;
+GMAT B1.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B1.CoordinateSystem = EarthMJ2000Eq;
+GMAT B1.DisplayStateType = Keplerian;
+GMAT B1.SMA = 6778.14;
+GMAT B1.ECC = 0.0001;
+GMAT B1.INC = 51.6;
+GMAT B1.RAAN = 120;
+GMAT B1.AOP = 0;
+GMAT B1.TA = 15;
+
+Create Spacecraft B2;
+GMAT B2.DateFormat = UTCGregorian;
+GMAT B2.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B2.CoordinateSystem = EarthMJ2000Eq;
+GMAT B2.DisplayStateType = Keplerian;
+GMAT B2.SMA = 6778.14;
+GMAT B2.ECC = 0.0001;
+GMAT B2.INC = 51.6;
+GMAT B2.RAAN = 120;
+GMAT B2.AOP = 0;
+GMAT B2.TA = 60;
+
+Create Spacecraft B3;
+GMAT B3.DateFormat = UTCGregorian;
+GMAT B3.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B3.CoordinateSystem = EarthMJ2000Eq;
+GMAT B3.DisplayStateType = Keplerian;
+GMAT B3.SMA = 6778.14;
+GMAT B3.ECC = 0.0001;
+GMAT B3.INC = 51.6;
+GMAT B3.RAAN = 120;
+GMAT B3.AOP = 0;
+GMAT B3.TA = 105;
+
+Create Spacecraft B4;
+GMAT B4.DateFormat = UTCGregorian;
+GMAT B4.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B4.CoordinateSystem = EarthMJ2000Eq;
+GMAT B4.DisplayStateType = Keplerian;
+GMAT B4.SMA = 6778.14;
+GMAT B4.ECC = 0.0001;
+GMAT B4.INC = 51.6;
+GMAT B4.RAAN = 120;
+GMAT B4.AOP = 0;
+GMAT B4.TA = 150;
+
+Create Spacecraft B5;
+GMAT B5.DateFormat = UTCGregorian;
+GMAT B5.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B5.CoordinateSystem = EarthMJ2000Eq;
+GMAT B5.DisplayStateType = Keplerian;
+GMAT B5.SMA = 6778.14;
+GMAT B5.ECC = 0.0001;
+GMAT B5.INC = 51.6;
+GMAT B5.RAAN = 120;
+GMAT B5.AOP = 0;
+GMAT B5.TA = 195;
+
+Create Spacecraft B6;
+GMAT B6.DateFormat = UTCGregorian;
+GMAT B6.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B6.CoordinateSystem = EarthMJ2000Eq;
+GMAT B6.DisplayStateType = Keplerian;
+GMAT B6.SMA = 6778.14;
+GMAT B6.ECC = 0.0001;
+GMAT B6.INC = 51.6;
+GMAT B6.RAAN = 120;
+GMAT B6.AOP = 0;
+GMAT B6.TA = 240;
+
+Create Spacecraft B7;
+GMAT B7.DateFormat = UTCGregorian;
+GMAT B7.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B7.CoordinateSystem = EarthMJ2000Eq;
+GMAT B7.DisplayStateType = Keplerian;
+GMAT B7.SMA = 6778.14;
+GMAT B7.ECC = 0.0001;
+GMAT B7.INC = 51.6;
+GMAT B7.RAAN = 120;
+GMAT B7.AOP = 0;
+GMAT B7.TA = 285;
+
+Create Spacecraft B8;
+GMAT B8.DateFormat = UTCGregorian;
+GMAT B8.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT B8.CoordinateSystem = EarthMJ2000Eq;
+GMAT B8.DisplayStateType = Keplerian;
+GMAT B8.SMA = 6778.14;
+GMAT B8.ECC = 0.0001;
+GMAT B8.INC = 51.6;
+GMAT B8.RAAN = 120;
+GMAT B8.AOP = 0;
+GMAT B8.TA = 330;
+
+%  ---- Plane C (RAAN = 240 deg) ----
+%  Inter-plane phasing F=1: plane C TA offset = 2 * 15 = 30 deg
+
+Create Spacecraft C1;
+GMAT C1.DateFormat = UTCGregorian;
+GMAT C1.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C1.CoordinateSystem = EarthMJ2000Eq;
+GMAT C1.DisplayStateType = Keplerian;
+GMAT C1.SMA = 6778.14;
+GMAT C1.ECC = 0.0001;
+GMAT C1.INC = 51.6;
+GMAT C1.RAAN = 240;
+GMAT C1.AOP = 0;
+GMAT C1.TA = 30;
+
+Create Spacecraft C2;
+GMAT C2.DateFormat = UTCGregorian;
+GMAT C2.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C2.CoordinateSystem = EarthMJ2000Eq;
+GMAT C2.DisplayStateType = Keplerian;
+GMAT C2.SMA = 6778.14;
+GMAT C2.ECC = 0.0001;
+GMAT C2.INC = 51.6;
+GMAT C2.RAAN = 240;
+GMAT C2.AOP = 0;
+GMAT C2.TA = 75;
+
+Create Spacecraft C3;
+GMAT C3.DateFormat = UTCGregorian;
+GMAT C3.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C3.CoordinateSystem = EarthMJ2000Eq;
+GMAT C3.DisplayStateType = Keplerian;
+GMAT C3.SMA = 6778.14;
+GMAT C3.ECC = 0.0001;
+GMAT C3.INC = 51.6;
+GMAT C3.RAAN = 240;
+GMAT C3.AOP = 0;
+GMAT C3.TA = 120;
+
+Create Spacecraft C4;
+GMAT C4.DateFormat = UTCGregorian;
+GMAT C4.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C4.CoordinateSystem = EarthMJ2000Eq;
+GMAT C4.DisplayStateType = Keplerian;
+GMAT C4.SMA = 6778.14;
+GMAT C4.ECC = 0.0001;
+GMAT C4.INC = 51.6;
+GMAT C4.RAAN = 240;
+GMAT C4.AOP = 0;
+GMAT C4.TA = 165;
+
+Create Spacecraft C5;
+GMAT C5.DateFormat = UTCGregorian;
+GMAT C5.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C5.CoordinateSystem = EarthMJ2000Eq;
+GMAT C5.DisplayStateType = Keplerian;
+GMAT C5.SMA = 6778.14;
+GMAT C5.ECC = 0.0001;
+GMAT C5.INC = 51.6;
+GMAT C5.RAAN = 240;
+GMAT C5.AOP = 0;
+GMAT C5.TA = 210;
+
+Create Spacecraft C6;
+GMAT C6.DateFormat = UTCGregorian;
+GMAT C6.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C6.CoordinateSystem = EarthMJ2000Eq;
+GMAT C6.DisplayStateType = Keplerian;
+GMAT C6.SMA = 6778.14;
+GMAT C6.ECC = 0.0001;
+GMAT C6.INC = 51.6;
+GMAT C6.RAAN = 240;
+GMAT C6.AOP = 0;
+GMAT C6.TA = 255;
+
+Create Spacecraft C7;
+GMAT C7.DateFormat = UTCGregorian;
+GMAT C7.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C7.CoordinateSystem = EarthMJ2000Eq;
+GMAT C7.DisplayStateType = Keplerian;
+GMAT C7.SMA = 6778.14;
+GMAT C7.ECC = 0.0001;
+GMAT C7.INC = 51.6;
+GMAT C7.RAAN = 240;
+GMAT C7.AOP = 0;
+GMAT C7.TA = 300;
+
+Create Spacecraft C8;
+GMAT C8.DateFormat = UTCGregorian;
+GMAT C8.Epoch = '01 Jan 2024 00:00:00.000';
+GMAT C8.CoordinateSystem = EarthMJ2000Eq;
+GMAT C8.DisplayStateType = Keplerian;
+GMAT C8.SMA = 6778.14;
+GMAT C8.ECC = 0.0001;
+GMAT C8.INC = 51.6;
+GMAT C8.RAAN = 240;
+GMAT C8.AOP = 0;
+GMAT C8.TA = 345;
+
+%  ================================================================
+%  GROUND STATIONS
+%  Three active stations only.
+%  Tromso (69.7 N) is excluded: the 51.6-deg inclination ceiling
+%  means satellite ground tracks never reach 69.7 N, so zero passes
+%  are generated regardless -- confirmed in Scenario 06 output.
+%  ================================================================
+
+Create GroundStation London;
+GMAT London.CentralBody = Earth;
+GMAT London.StateType = Spherical;
+GMAT London.HorizonReference = Ellipsoid;
+GMAT London.Location1 = 51.5;
+GMAT London.Location2 = -0.1;
+GMAT London.Location3 = 5.0;
+GMAT London.Id = 'London';
+GMAT London.MinimumElevationAngle = 5;
+
+Create GroundStation Nairobi;
+GMAT Nairobi.CentralBody = Earth;
+GMAT Nairobi.StateType = Spherical;
+GMAT Nairobi.HorizonReference = Ellipsoid;
+GMAT Nairobi.Location1 = -1.3;
+GMAT Nairobi.Location2 = 36.8;
+GMAT Nairobi.Location3 = 5.0;
+GMAT Nairobi.Id = 'Nairobi';
+GMAT Nairobi.MinimumElevationAngle = 5;
+
+Create GroundStation Lagos;
+GMAT Lagos.CentralBody = Earth;
+GMAT Lagos.StateType = Spherical;
+GMAT Lagos.HorizonReference = Ellipsoid;
+GMAT Lagos.Location1 = 6.5;
+GMAT Lagos.Location2 = 3.4;
+GMAT Lagos.Location3 = 5.0;
+GMAT Lagos.Id = 'Lagos';
+GMAT Lagos.MinimumElevationAngle = 5;
+
+%  ================================================================
+%  CONTACT LOCATORS
+%  One ContactLocator per satellite, three active stations as
+%  Observers. RunMode=Automatic fires at end of propagation.
+%  Output: output_sc11\Contact_[A-C][1-8].txt  (24 files)
+%  ================================================================
+
+%  ---- Plane A ----
+
+Create ContactLocator CL_A1;
+GMAT CL_A1.Target = A1;
+GMAT CL_A1.Observers = {London, Nairobi, Lagos};
+GMAT CL_A1.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A1.txt';
+GMAT CL_A1.OccultingBodies = {Earth};
+GMAT CL_A1.RunMode = Automatic;
+GMAT CL_A1.UseEntireInterval = true;
+GMAT CL_A1.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A2;
+GMAT CL_A2.Target = A2;
+GMAT CL_A2.Observers = {London, Nairobi, Lagos};
+GMAT CL_A2.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A2.txt';
+GMAT CL_A2.OccultingBodies = {Earth};
+GMAT CL_A2.RunMode = Automatic;
+GMAT CL_A2.UseEntireInterval = true;
+GMAT CL_A2.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A3;
+GMAT CL_A3.Target = A3;
+GMAT CL_A3.Observers = {London, Nairobi, Lagos};
+GMAT CL_A3.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A3.txt';
+GMAT CL_A3.OccultingBodies = {Earth};
+GMAT CL_A3.RunMode = Automatic;
+GMAT CL_A3.UseEntireInterval = true;
+GMAT CL_A3.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A4;
+GMAT CL_A4.Target = A4;
+GMAT CL_A4.Observers = {London, Nairobi, Lagos};
+GMAT CL_A4.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A4.txt';
+GMAT CL_A4.OccultingBodies = {Earth};
+GMAT CL_A4.RunMode = Automatic;
+GMAT CL_A4.UseEntireInterval = true;
+GMAT CL_A4.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A5;
+GMAT CL_A5.Target = A5;
+GMAT CL_A5.Observers = {London, Nairobi, Lagos};
+GMAT CL_A5.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A5.txt';
+GMAT CL_A5.OccultingBodies = {Earth};
+GMAT CL_A5.RunMode = Automatic;
+GMAT CL_A5.UseEntireInterval = true;
+GMAT CL_A5.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A6;
+GMAT CL_A6.Target = A6;
+GMAT CL_A6.Observers = {London, Nairobi, Lagos};
+GMAT CL_A6.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A6.txt';
+GMAT CL_A6.OccultingBodies = {Earth};
+GMAT CL_A6.RunMode = Automatic;
+GMAT CL_A6.UseEntireInterval = true;
+GMAT CL_A6.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A7;
+GMAT CL_A7.Target = A7;
+GMAT CL_A7.Observers = {London, Nairobi, Lagos};
+GMAT CL_A7.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A7.txt';
+GMAT CL_A7.OccultingBodies = {Earth};
+GMAT CL_A7.RunMode = Automatic;
+GMAT CL_A7.UseEntireInterval = true;
+GMAT CL_A7.UseLightTimeDelay = true;
+
+Create ContactLocator CL_A8;
+GMAT CL_A8.Target = A8;
+GMAT CL_A8.Observers = {London, Nairobi, Lagos};
+GMAT CL_A8.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_A8.txt';
+GMAT CL_A8.OccultingBodies = {Earth};
+GMAT CL_A8.RunMode = Automatic;
+GMAT CL_A8.UseEntireInterval = true;
+GMAT CL_A8.UseLightTimeDelay = true;
+
+%  ---- Plane B ----
+
+Create ContactLocator CL_B1;
+GMAT CL_B1.Target = B1;
+GMAT CL_B1.Observers = {London, Nairobi, Lagos};
+GMAT CL_B1.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B1.txt';
+GMAT CL_B1.OccultingBodies = {Earth};
+GMAT CL_B1.RunMode = Automatic;
+GMAT CL_B1.UseEntireInterval = true;
+GMAT CL_B1.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B2;
+GMAT CL_B2.Target = B2;
+GMAT CL_B2.Observers = {London, Nairobi, Lagos};
+GMAT CL_B2.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B2.txt';
+GMAT CL_B2.OccultingBodies = {Earth};
+GMAT CL_B2.RunMode = Automatic;
+GMAT CL_B2.UseEntireInterval = true;
+GMAT CL_B2.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B3;
+GMAT CL_B3.Target = B3;
+GMAT CL_B3.Observers = {London, Nairobi, Lagos};
+GMAT CL_B3.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B3.txt';
+GMAT CL_B3.OccultingBodies = {Earth};
+GMAT CL_B3.RunMode = Automatic;
+GMAT CL_B3.UseEntireInterval = true;
+GMAT CL_B3.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B4;
+GMAT CL_B4.Target = B4;
+GMAT CL_B4.Observers = {London, Nairobi, Lagos};
+GMAT CL_B4.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B4.txt';
+GMAT CL_B4.OccultingBodies = {Earth};
+GMAT CL_B4.RunMode = Automatic;
+GMAT CL_B4.UseEntireInterval = true;
+GMAT CL_B4.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B5;
+GMAT CL_B5.Target = B5;
+GMAT CL_B5.Observers = {London, Nairobi, Lagos};
+GMAT CL_B5.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B5.txt';
+GMAT CL_B5.OccultingBodies = {Earth};
+GMAT CL_B5.RunMode = Automatic;
+GMAT CL_B5.UseEntireInterval = true;
+GMAT CL_B5.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B6;
+GMAT CL_B6.Target = B6;
+GMAT CL_B6.Observers = {London, Nairobi, Lagos};
+GMAT CL_B6.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B6.txt';
+GMAT CL_B6.OccultingBodies = {Earth};
+GMAT CL_B6.RunMode = Automatic;
+GMAT CL_B6.UseEntireInterval = true;
+GMAT CL_B6.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B7;
+GMAT CL_B7.Target = B7;
+GMAT CL_B7.Observers = {London, Nairobi, Lagos};
+GMAT CL_B7.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B7.txt';
+GMAT CL_B7.OccultingBodies = {Earth};
+GMAT CL_B7.RunMode = Automatic;
+GMAT CL_B7.UseEntireInterval = true;
+GMAT CL_B7.UseLightTimeDelay = true;
+
+Create ContactLocator CL_B8;
+GMAT CL_B8.Target = B8;
+GMAT CL_B8.Observers = {London, Nairobi, Lagos};
+GMAT CL_B8.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_B8.txt';
+GMAT CL_B8.OccultingBodies = {Earth};
+GMAT CL_B8.RunMode = Automatic;
+GMAT CL_B8.UseEntireInterval = true;
+GMAT CL_B8.UseLightTimeDelay = true;
+
+%  ---- Plane C ----
+
+Create ContactLocator CL_C1;
+GMAT CL_C1.Target = C1;
+GMAT CL_C1.Observers = {London, Nairobi, Lagos};
+GMAT CL_C1.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C1.txt';
+GMAT CL_C1.OccultingBodies = {Earth};
+GMAT CL_C1.RunMode = Automatic;
+GMAT CL_C1.UseEntireInterval = true;
+GMAT CL_C1.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C2;
+GMAT CL_C2.Target = C2;
+GMAT CL_C2.Observers = {London, Nairobi, Lagos};
+GMAT CL_C2.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C2.txt';
+GMAT CL_C2.OccultingBodies = {Earth};
+GMAT CL_C2.RunMode = Automatic;
+GMAT CL_C2.UseEntireInterval = true;
+GMAT CL_C2.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C3;
+GMAT CL_C3.Target = C3;
+GMAT CL_C3.Observers = {London, Nairobi, Lagos};
+GMAT CL_C3.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C3.txt';
+GMAT CL_C3.OccultingBodies = {Earth};
+GMAT CL_C3.RunMode = Automatic;
+GMAT CL_C3.UseEntireInterval = true;
+GMAT CL_C3.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C4;
+GMAT CL_C4.Target = C4;
+GMAT CL_C4.Observers = {London, Nairobi, Lagos};
+GMAT CL_C4.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C4.txt';
+GMAT CL_C4.OccultingBodies = {Earth};
+GMAT CL_C4.RunMode = Automatic;
+GMAT CL_C4.UseEntireInterval = true;
+GMAT CL_C4.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C5;
+GMAT CL_C5.Target = C5;
+GMAT CL_C5.Observers = {London, Nairobi, Lagos};
+GMAT CL_C5.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C5.txt';
+GMAT CL_C5.OccultingBodies = {Earth};
+GMAT CL_C5.RunMode = Automatic;
+GMAT CL_C5.UseEntireInterval = true;
+GMAT CL_C5.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C6;
+GMAT CL_C6.Target = C6;
+GMAT CL_C6.Observers = {London, Nairobi, Lagos};
+GMAT CL_C6.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C6.txt';
+GMAT CL_C6.OccultingBodies = {Earth};
+GMAT CL_C6.RunMode = Automatic;
+GMAT CL_C6.UseEntireInterval = true;
+GMAT CL_C6.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C7;
+GMAT CL_C7.Target = C7;
+GMAT CL_C7.Observers = {London, Nairobi, Lagos};
+GMAT CL_C7.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C7.txt';
+GMAT CL_C7.OccultingBodies = {Earth};
+GMAT CL_C7.RunMode = Automatic;
+GMAT CL_C7.UseEntireInterval = true;
+GMAT CL_C7.UseLightTimeDelay = true;
+
+Create ContactLocator CL_C8;
+GMAT CL_C8.Target = C8;
+GMAT CL_C8.Observers = {London, Nairobi, Lagos};
+GMAT CL_C8.Filename = 'C:\Users\Admin\Documents\Projects\GMAT_portfolio\scenario_11_contact_scheduling_ilp\output_sc11\Contact_C8.txt';
+GMAT CL_C8.OccultingBodies = {Earth};
+GMAT CL_C8.RunMode = Automatic;
+GMAT CL_C8.UseEntireInterval = true;
+GMAT CL_C8.UseLightTimeDelay = true;
+
+%  ================================================================
+%  VISUALISATION
+%  ================================================================
+
+Create OrbitView WalkerView;
+GMAT WalkerView.ShowPlot = true;
+GMAT WalkerView.Add = {A1, A2, A3, A4, A5, A6, A7, A8, B1, B2, B3, B4, B5, B6, B7, B8, C1, C2, C3, C4, C5, C6, C7, C8, Earth};
+GMAT WalkerView.CoordinateSystem = EarthMJ2000Eq;
+GMAT WalkerView.ViewPointReference = Earth;
+GMAT WalkerView.ViewPointVector = [ 0 0 30000 ];
+GMAT WalkerView.ViewDirection = Earth;
+
+Create GroundTrackPlot WalkerGroundTrack;
+GMAT WalkerGroundTrack.ShowPlot = true;
+GMAT WalkerGroundTrack.Add = {A1, A2, A3, A4, A5, A6, A7, A8, B1, B2, B3, B4, B5, B6, B7, B8, C1, C2, C3, C4, C5, C6, C7, C8};
+GMAT WalkerGroundTrack.CentralBody = Earth;
+
+%  ================================================================
+BeginMissionSequence;
+%  ================================================================
+
+%  Propagate all 24 satellites for 1 day simultaneously.
+%  ContactLocators (RunMode=Automatic) fire at end of propagation
+%  and write 24 Contact_*.txt files to output_sc11\.
+%
+%  After GMAT finishes, run the ILP scheduler:
+%    python 11_ilp_contact_scheduler.py
+%  (Ensure output_sc11\ folder exists before running this script)
+
+Propagate DefaultProp(A1, A2, A3, A4, A5, A6, A7, A8, B1, B2, B3, B4, B5, B6, B7, B8, C1, C2, C3, C4, C5, C6, C7, C8) {A1.ElapsedDays = 1};

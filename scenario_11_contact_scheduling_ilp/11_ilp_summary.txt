@@ -1,0 +1,51 @@
+========================================================================
+SCENARIO 11 -- ILP FORMULATION AND RESULT SUMMARY
+========================================================================
+
+PROBLEM FORMULATION
+----------------------------------------
+  Decision variables (binary x_i) : 284
+  Conflict constraints             : 5
+  Gap linearisation pairs          : 260
+  Auxiliary gap variables (g_k)    : 260
+  Max-gap variable (G_max)         : 1
+  Total variables                  : 545
+
+OBJECTIVE (weighted sum, maximised)
+----------------------------------------
+  alpha * (sum contact_i * x_i)/100  -  beta * G_max/100
+  alpha = 1.0  (contact weight)
+  beta  = 2.0  (gap penalty weight -- beta > alpha: gap minimisation prioritised)
+
+CONSTRAINTS
+----------------------------------------
+  1. Station exclusivity:
+       x_i + x_j <= 1  for each conflict pair (i,j)
+       (one antenna per station -- no simultaneous contacts)
+  2. Gap linearisation (big-M, M = 86400 s):
+       g_k >= gap_k * (x_i + x_j - 1)   [active if both selected]
+       g_k <= gap_k * x_i
+       g_k <= gap_k * x_j
+  3. G_max >= g_k  for all k
+
+SOLVER RESULT
+----------------------------------------
+  Solver              : HiGHS (via PuLP 4.x)
+  Status              : Optimal
+  Windows scheduled   : 259 / 284
+  Total contact time  : 106463.8 s (29.573 h)
+  Worst-case gap      : 5956.4 s (1.655 h)
+
+FLEET-LEVEL STATISTICS
+----------------------------------------
+  Mean contact per satellite  : 4436.0 s
+  Min contact per satellite   : 3791.0 s
+  Max contact per satellite   : 5029.6 s
+  Mean max-gap per satellite  : 9.139 h
+  Worst max-gap (fleet)       : 11.485 h
+
+GROUND STATION UTILISATION
+----------------------------------------
+  London    : 52745.5 s (14.652 h)
+  Nairobi   : 25364.3 s (7.046 h)
+  Lagos     : 28354.0 s (7.876 h)
